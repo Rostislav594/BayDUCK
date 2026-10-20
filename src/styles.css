@@ -2619,6 +2619,21 @@ dialog::backdrop {
     padding-top: 245px;
   }
 }
+/* Phone hero: no floating cards or extra links, categories sit right under search. */
+@media (max-width: 780px) {
+  .hero .floating-card,
+  .hero-explore,
+  .scroll-cue {
+    display: none;
+  }
+  .hero {
+    min-height: 0;
+  }
+  .hero-bottom {
+    /* Bottom room keeps the cartoon sneaker and socks clear of the pills. */
+    padding: 24px 0 72px;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
