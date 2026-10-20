@@ -4,7 +4,7 @@
 
 ## Запуск
 
-Нужен Node.js 20 или новее. Установка пакетов не требуется: проект не имеет сторонних зависимостей.
+https://rostislav594.github.io/BayDUCK/
 
 ```powershell
 npm run dev
