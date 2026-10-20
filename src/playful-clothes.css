@@ -1,0 +1,148 @@
+/* Interactive illustrations occupy the gaps around the existing hero content. */
+.playful-clothes {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+.clothing-toy {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  padding: 4px;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 20px;
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.clothing-toy img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  overflow: visible;
+  pointer-events: none;
+  transform-origin: 50% 65%;
+  transition: filter 0.2s;
+}
+.clothing-toy:hover img,
+.clothing-toy:focus-visible img {
+  filter: drop-shadow(0 4px 5px #5433eb25);
+}
+.clothing-toy--sneaker {
+  left: 10%;
+  bottom: 32px;
+  width: 112px;
+  height: 80px;
+  rotate: -12deg;
+}
+.clothing-toy--hoodie {
+  left: calc(50% - 340px);
+  top: 350px;
+  width: 88px;
+  height: 104px;
+  rotate: -9deg;
+}
+.clothing-toy--cap {
+  right: 26%;
+  top: 25px;
+  width: 88px;
+  height: 76px;
+  rotate: 12deg;
+}
+.clothing-toy--socks {
+  right: 4%;
+  bottom: 34px;
+  width: 76px;
+  height: 100px;
+  rotate: 12deg;
+}
+.clothing-toy--socks img {
+  transform-origin: 50% 15%;
+}
+.clothing-hint {
+  position: absolute;
+  bottom: 15px;
+  left: 50%;
+  translate: -50% 0;
+  color: var(--muted);
+  white-space: nowrap;
+  font-size: 11px;
+  letter-spacing: -0.2px;
+}
+.clothing-hint span {
+  display: inline-block;
+  margin-left: 7px;
+  color: var(--violet);
+}
+.clothing-pop {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  color: var(--violet);
+  font-size: 17px;
+  line-height: 1;
+  pointer-events: none;
+  animation: clothing-pop 0.7s ease-out both;
+}
+@keyframes clothing-pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.3);
+  }
+  25% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--pop-x)), calc(-50% + var(--pop-y)))
+      scale(1.15) rotate(35deg);
+  }
+}
+@media (max-width: 1100px) {
+  .playful-clothes {
+    position: relative;
+    inset: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    padding: 20px 0 43px;
+  }
+  .playful-clothes .clothing-toy {
+    position: relative;
+    inset: auto;
+    flex: 0 1 80px;
+    width: 80px;
+    height: 80px;
+  }
+  .clothing-hint {
+    bottom: 11px;
+  }
+}
+@media (max-width: 500px) {
+  .playful-clothes {
+    gap: 12px;
+    padding-top: 13px;
+  }
+  .playful-clothes .clothing-toy {
+    flex-basis: 62px;
+    width: 62px;
+    height: 68px;
+  }
+  .clothing-hint {
+    font-size: 10px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .clothing-toy img {
+    transition: none;
+  }
+  .clothing-pop {
+    display: none;
+    animation: none;
+  }
+}

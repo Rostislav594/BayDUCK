@@ -1,0 +1,17 @@
+{
+  "name": "bayduck",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "BayDUCK — Ukrainian footwear and streetwear store prototype",
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "dev:lan": "node scripts/serve.mjs --lan",
+    "start": "node scripts/serve.mjs",
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
