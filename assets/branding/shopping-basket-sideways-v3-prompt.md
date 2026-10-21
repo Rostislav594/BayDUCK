@@ -1,0 +1,7 @@
+# BayDUCK sideways shopping basket — v3
+
+Edited on 21 October 2026 with the built-in image_gen tool. Edit target: `assets/branding/shopping-basket-sideways-v2.png`. Output: `assets/branding/shopping-basket-sideways-v3.png`, with generated alpha transparency preserved. The carrying handle now matches the cream base; the violet rim remains unchanged. Previous versions are preserved. CSS removes the flex gap before B to leave only the images' narrow transparent margins.
+
+## Prompt
+
+Edit target: the supplied BayDUCK sideways shopping basket PNG. Make exactly one local color change: recolor the raised arched carrying HANDLE on the far RIGHT, including its two hinged end pieces, from violet to the SAME WARM IVORY/CREAM material color as the closed basket BASE at the far LEFT. Preserve the handle's dark cartoon outline, dimensional shading and highlights, now in warm cream/beige tones matching the base. Keep the thick VERTICAL RIM band near the middle VIOLET; keep the violet interior accents unchanged. Preserve absolutely everything else: exact sideways orientation with base left/opening right, silhouette, geometry, handle shape and position, slot pattern, size, crop, narrow margins, cartoon linework, plastic volume, cream basket body and genuine alpha-transparent background. No text, additional objects, backdrop or external shadows. This is a color correction of the existing asset, not a redesign.

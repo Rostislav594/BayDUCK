@@ -428,14 +428,30 @@ main:focus {
   margin-right: auto;
 }
 .hero .hero-wordmark {
+  isolation: isolate;
+  /* Center the wordmark itself: the basket takes 14.8% of this row. */
+  translate: -7.4% 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 0;
   width: min(480px, 100%);
   margin: 0 auto 32px;
   line-height: 0;
 }
 .hero-wordmark img {
-  width: 100%;
   height: auto;
   object-fit: contain;
+}
+.hero-wordmark .hero-brand-mark {
+  position: relative;
+  z-index: 1;
+  width: 85.2%;
+}
+.hero-wordmark .hero-basket {
+  position: relative;
+  z-index: 0;
+  width: 14.8%;
+  margin-bottom: 2.4%;
 }
 .eyebrow {
   font-size: 10px;
@@ -1054,7 +1070,7 @@ main:focus {
   max-width: 1280px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 2fr 1fr 1.3fr 1fr;
+  grid-template-columns: 2fr 1.3fr 1fr;
   gap: 35px;
   padding-bottom: 36px;
 }
@@ -1816,7 +1832,7 @@ dialog::backdrop {
     font-size: 34px;
   }
   .footer-top {
-    grid-template-columns: 1.4fr 1fr 1.1fr;
+    grid-template-columns: 1.4fr 1.1fr;
   }
   .footer-cta {
     display: none;
@@ -2140,7 +2156,7 @@ dialog::backdrop {
     padding: 32px 20px 24px;
   }
   .footer-top {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 25px;
   }
   .footer-brand {
@@ -2618,6 +2634,21 @@ dialog::backdrop {
   .hero-bottom {
     padding-top: 245px;
   }
+  .hero .hero-wordmark {
+    /* Keep the offset basket inside the phone canvas with an 8px margin. */
+    max-width: calc(87% + 21px);
+  }
+}
+@media (min-width: 901px) and (max-width: 1100px) {
+  .hero .hero-wordmark {
+    /* Leave room for the left product card and the basket's landing approach. */
+    max-width: calc(64vw - 280px);
+  }
+}
+@media (min-width: 781px) and (max-width: 900px) {
+  .hero .floating-card {
+    display: none;
+  }
 }
 /* Phone hero: no floating cards or extra links, categories sit right under search. */
 @media (max-width: 780px) {
@@ -2630,7 +2661,7 @@ dialog::backdrop {
     min-height: 0;
   }
   .hero-bottom {
-    /* Bottom room keeps the cartoon sneaker and socks clear of the pills. */
+    /* Bottom room keeps the cartoon sneakers clear of the pills. */
     padding: 24px 0 72px;
   }
 }

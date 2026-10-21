@@ -2,7 +2,23 @@
 
 Generated with the built-in image_gen tool, with `assets/branding/bayduck-mascot-concept-v1.png` as style reference. All four v1 PNGs retain their generated alpha transparency. Each item was generated separately. Illustrations are decorative interactive elements, not catalog product photography.
 
-Files: [sneaker-v1.png](./sneaker-v1.png), [hoodie-v1.png](./hoodie-v1.png), [cap-v1.png](./cap-v1.png), [socks-v1.png](./socks-v1.png).
+Current hero files: [sneaker-v1.png](./sneaker-v1.png) (chunky low-top), [backpack-v1.png](./backpack-v1.png), [high-top-v1.png](./high-top-v1.png) (retro high-top), [sand-pair-v1.png](./sand-pair-v1.png), and [mint-pair-v1.png](./mint-pair-v1.png). The earlier [hoodie-v1.png](./hoodie-v1.png), [socks-v1.png](./socks-v1.png), and [cap-v1.png](./cap-v1.png) are preserved but no longer rendered. The user requested two different sneaker models while keeping the backpack, then two additional pairs in different palettes.
+
+## Additional pairs — 21 October 2026
+
+Two matching shoes form one clickable pair. The warm pair uses sand, cream, terracotta and espresso; the cool running pair uses mint/sage, light gray, ivory and charcoal. Both were generated separately with the built-in image_gen tool using `high-top-v1.png` as style reference and retain generated alpha transparency. Full prompts: [sand-pair-v1-prompt.md](./sand-pair-v1-prompt.md), [mint-pair-v1-prompt.md](./mint-pair-v1-prompt.md). These palettes were requested for the new shoe illustrations.
+
+## high-top — 21 October 2026
+
+Generated separately with the built-in image_gen tool, using `sneaker-v1.png` as the illustration style reference. Saved as `high-top-v1.png` with generated alpha transparency. The existing low-top is reused unchanged; the backpack is unchanged.
+
+Use case: illustration-story. Asset type: isolated interactive sneaker illustration for the BayDUCK storefront. Input image 1 is a style reference and silhouette contrast reference. Create a NEW different model: ONE retro HIGH-TOP BASKETBALL SNEAKER with an unmistakably tall padded ankle collar, flat cupsole, cream laces, simple large warm ivory leather panels, violet #5433eb ankle panel and toe/heel details, near-black outsole trim. Three-quarter side view, toe pointing LEFT (opposite direction to reference). Match the reference crisp near-black cartoon outlines, dimensional rounded cartoon volume, restrained cel shading, warm ivory highlights and clean readable silhouette. It must look clearly different from the bulky low-top running shoe: tall upper and flatter less chunky sole. One complete shoe centered, filling about 85 percent of a square canvas with a little transparent padding on all sides. Genuine transparent alpha background. No letters, labels, brand logos, swooshes, duck, person, backpack, extra shoe, pair of shoes, props, sticker border, glow, sparkles, cast shadow outside object, backdrop, white rectangle, photo textures, or photorealistic 3D rendering. Keep existing illustration style; only replace the shoe model and orientation.
+
+## backpack — 21 October 2026
+
+Generated separately with the built-in image_gen tool, using `assets/playful/hoodie-v1.png` as the style reference. Saved as `assets/playful/backpack-v1.png` with generated alpha transparency.
+
+Use case: illustration-story. Asset type: isolated interactive accessory sticker for the BayDUCK storefront. Input image 1 is STYLE REFERENCE ONLY: match the crisp near-black cartoon outlines, warm ivory whites, violet #5433eb accents, soft rounded volume, restrained cel shading and clean highlights. Replace the idea of the hoodie with ONE compact school/streetwear BACKPACK (Russian: портфель), a recognizable upright soft backpack with two shoulder straps, a small top handle, a rounded front zipper pocket and zip pulls. Three-quarter front view, warm ivory main fabric, violet front pocket and violet straps/zip accents. Readable small silhouette, one complete object centered and filling most of a square canvas, small transparent margin. Genuine transparent alpha background. No lettering, logos, labels, duck, person, other objects, backdrop, sticker border, glow, external cast shadow, sparkles, photorealism or 3D rendering. Match the existing BayDUCK cartoon wardrobe illustration set.
 
 ## sneaker
 

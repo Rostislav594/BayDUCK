@@ -1,0 +1,277 @@
+// Run with Playwright MCP browser_run_code_unsafe filename, with npm run dev active.
+async (browserPage) => {
+  const context = await browserPage.context().browser().newContext();
+  try {
+    const page = await context.newPage();
+    const results = [], errors = [], speeds = [];
+    page.on("pageerror", error => errors.push(error.message));
+    page.on("console", message => { if (message.type() === "error") errors.push(message.text()); });
+    const check = (condition, name) => { if (!condition) throw new Error(name); results.push(name); };
+    const garment = id => page.locator(`[data-garment="${id}"]`);
+    const idle = () => page.waitForFunction(() => !document.querySelector(".clothing-flight-layer") && !document.querySelector("[data-flight-state]"));
+    await page.goto("http://127.0.0.1:5173/#home");
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    const scale = page.viewportSize().width / await page.evaluate(() => innerWidth);
+    const viewport = async width => {
+      await page.setViewportSize({ width: Math.round(width * scale), height: Math.round(950 * scale) });
+      await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+      check(Math.abs(await page.evaluate(() => innerWidth) - width) <= 1, `CSS viewport ${width}px`);
+    };
+    await viewport(1440);
+    check(await page.locator('.clothing-toy img').evaluateAll(images=>images.every(image=>image.complete && image.naturalWidth>0)), "All five sneaker and backpack illustrations load successfully");
+
+    for (const id of ["high-top", "sneaker", "backpack", "sand-pair", "mint-pair"]) {
+      const source = await garment(id).locator("img").boundingBox();
+      await garment(id).click();
+      const initial = await page.evaluate(() => {
+        const layer = document.querySelector(".clothing-flight-layer");
+        layer.getAnimations({ subtree: true }).forEach(a => { a.pause(); a.currentTime = 0; });
+        const item = layer.querySelector(".clothing-flight-item").getBoundingClientRect();
+        const realBasket = document.querySelector(".hero-basket").getBoundingClientRect();
+        const copyBasket = layer.querySelector(".clothing-flight-basket").getBoundingClientRect();
+        return { x:item.x + item.width / 2, y:item.y + item.height / 2, basketError:Math.abs(copyBasket.x-realBasket.x)+Math.abs(copyBasket.y-realBasket.y), hidden:getComputedStyle(document.querySelector(".is-playing > img")).opacity, inaccessible:layer.getAttribute("aria-hidden") };
+      });
+      check(Math.abs(initial.x - source.x - source.width / 2) < 2 && Math.abs(initial.y - source.y - source.height / 2) < 2 && initial.basketError < 2, `${id}: copies start at the original artwork`);
+      check(initial.hidden === "0" && initial.inaccessible === "true", `${id}: source hides and decorative copies stay out of accessibility tree`);
+      const arrival = await page.evaluate(() => {
+        const layer = document.querySelector(".clothing-flight-layer");
+        const item = layer.querySelector(".clothing-flight-item");
+        const basket = layer.querySelector(".clothing-flight-basket");
+        const itemAnimation=item.getAnimations()[0], basketAnimation=basket.getAnimations()[0];
+        const timing=itemAnimation.effect.getTiming();
+        const time=timing.delay+timing.duration*.995;
+        itemAnimation.currentTime=time;
+        basketAnimation.currentTime=time;
+        const a=item.getBoundingClientRect(), b=basket.getBoundingClientRect();
+        return {angle:getComputedStyle(basket).rotate, distance:Math.hypot(a.x+a.width/2-b.x-b.width/2,a.y+a.height/2-b.y-b.height/2), size:a.width, basketSize:b.width};
+      });
+      check(arrival.angle === "-450deg" && arrival.distance < arrival.basketSize * .3 && arrival.size < arrival.basketSize * .3, `${id}: enters the upright basket`);
+      const presentation = await page.evaluate(() => {
+        const layer=document.querySelector(".clothing-flight-layer");
+        const item=layer.querySelector(".clothing-flight-item"), basket=layer.querySelector(".clothing-flight-basket");
+        const animation=basket.getAnimations()[0], frames=animation.effect.getKeyframes();
+        const duration=animation.effect.getTiming().duration;
+        const spinEnd=frames.findIndex(f=>f.rotate==="-450deg");
+        const from=frames[spinEnd-1].offset*duration, to=frames[spinEnd].offset*duration;
+        const angles=[.1,.3,.5,.7,.9].map(t=>{animation.currentTime=from+(to-from)*t;return parseFloat(getComputedStyle(basket).rotate);});
+        const constant=angles.slice(1).every((a,i)=>Math.abs(a-angles[i]+90)<.1);
+        animation.currentTime=120;
+        const earlyRotation=parseFloat(getComputedStyle(basket).rotate);
+        const itemFrames=item.getAnimations()[0].effect.getKeyframes();
+        const path=itemFrames.map(f=>{const [x,y=0]=f.translate.split(" ").map(parseFloat);return [x,y];});
+        const last=path.at(-1), terminal=[];
+        for(let i=path.length-1;i>=0 && Math.abs(path[i][0]-last[0])<.2;i--)terminal.unshift(path[i]);
+        const timing=item.getAnimations()[0].effect.getTiming();
+        const pathLength=path.slice(1).reduce((sum,p,i)=>sum+Math.hypot(p[0]-path[i][0],p[1]-path[i][1]),0);
+        const speed=pathLength/timing.duration;
+        const fullSize=itemFrames.filter(f=>f.offset<=.5).every(f=>Number(f.scale)===1)
+          && Number(itemFrames.at(-2).scale)<.2;
+        layer.getAnimations({subtree:true}).forEach(a=>a.currentTime=timing.delay+timing.duration*.45);
+        const tails=[...layer.querySelectorAll(".clothing-comet-segment")];
+        const base=Math.max(...tails.map(t=>parseFloat(getComputedStyle(t).height)));
+        const centres=tails.map(t=>{const r=t.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2};});
+        const sourceSize=Math.min(document.querySelector('.is-playing img').offsetWidth,document.querySelector('.is-playing img').offsetHeight);
+        const shortTrail=Math.max(...centres.map(a=>Math.hypot(a.x-centres[0].x,a.y-centres[0].y)))<sourceSize*.7;
+        const proportional=Math.abs(base/sourceSize-.6)<.001;
+        const tail=tails.length>0 && tails.some(t=>getComputedStyle(t).backgroundColor==="rgb(49, 133, 255)" && Number(getComputedStyle(t).opacity)>.1);
+        const rim=layer.querySelector(".clothing-flight-rim");
+        layer.getAnimations({subtree:true}).forEach(a=>a.currentTime=timing.duration+30);
+        const glow=rim && Number(getComputedStyle(rim).opacity)>.7 && getComputedStyle(rim).clipPath!=="none";
+        const tailScale=Number(getComputedStyle(tails[0]).scale);
+        const shrunkTail=tailScale<.02 && Math.abs(tailScale-Number(getComputedStyle(item).scale))<.001;
+        layer.getAnimations({subtree:true}).forEach(a=>a.currentTime=timing.duration+300+999);
+        const held=getComputedStyle(basket).rotate==="-450deg" && Number(getComputedStyle(rim).opacity)===0;
+        layer.getAnimations({subtree:true}).forEach(a=>a.currentTime=timing.duration+300+1060);
+        const returning=Math.abs(parseFloat(getComputedStyle(basket).rotate)+405)<.1;
+        return {shrunkTail,proportional,speed,fullSize,pause:held && returning,constant,early:earlyRotation<-80 && earlyRotation>-100 && timing.delay===0,wide:base>=10 && shortTrail,glow,vertical:terminal.length>=3 && terminal.at(-1)[1]>terminal[0][1],tail};
+      });
+      check(presentation.constant, `${id}: basket spins at constant angular speed without a 360-degree pause`);
+      check(presentation.vertical, `${id}: final approach is vertically downward`);
+      check(presentation.tail, `${id}: blue comet tail follows the flight`);
+      check(presentation.early, `${id}: basket rotation starts together with the flight`);
+      check(presentation.wide, `${id}: comet tail is short with a broad base`);
+      check(presentation.proportional, `${id}: comet base scales with garment size`);
+      check(presentation.shrunkTail, `${id}: tail shrinks together with garment at entry`);
+      check(presentation.glow, `${id}: only the rim lights up at impact`);
+      check(presentation.fullSize, `${id}: full size during travel, shrinking only before entry`);
+      check(presentation.pause, `${id}: basket waits one second after the rim fades before returning`);
+      check(Math.abs(presentation.speed-.4)<.004, `${id}: travels at 400 CSS pixels per second`);
+      speeds.push(presentation.speed);
+      const original = await page.locator(".hero-basket").boundingBox();
+      await page.evaluate(() => document.querySelector(".clothing-flight-layer").getAnimations({subtree:true}).forEach(a=>a.finish()));
+      if (id==='mint-pair') {
+        await page.locator('.clothing-flight-layer[data-phase="stowing"]').waitFor();
+        const final = await page.evaluate(()=>{
+          const basket=document.querySelector('.hero-basket'), logo=document.querySelector('.hero-brand-mark');
+          const animation=basket.getAnimations()[0];
+          animation.pause();
+          animation.currentTime=animation.effect.getTiming().duration*.5;
+          const style=getComputedStyle(basket);
+          const copiesHidden=[...document.querySelectorAll('.clothing-flight-basket,.clothing-flight-rim')].every(copy=>getComputedStyle(copy).display==='none');
+          return {copiesHidden,moves:parseFloat(style.translate)>0, clips:style.clipPath!=='none', behind:Number(style.zIndex)<Number(getComputedStyle(logo).zIndex), smooth:animation.effect.getTiming().duration===900 && animation.effect.getTiming().easing.includes('cubic-bezier')};
+        });
+        check(final.copiesHidden && final.moves && final.clips && final.behind && final.smooth, "After the fifth item, one basket smoothly slides right under the logo with progressive occlusion");
+        await page.evaluate(()=>document.querySelector('.hero-basket').getAnimations().forEach(a=>a.finish()));
+      }
+      await idle();
+      const restored = await page.locator(".hero-basket").boundingBox();
+      check(!await garment(id).isVisible() && Math.abs(original.x-restored.x)<1 && Math.abs(original.y-restored.y)<1, `${id}: collected artwork stays hidden while basket returns`);
+      check(await page.locator('.hero-basket').evaluate((basket,last)=>getComputedStyle(basket).opacity===(last?'0':'1'),id==='mint-pair'), `${id}: basket hides only after the last item`);
+    }
+    check(Math.max(...speeds)-Math.min(...speeds)<.004, "All garments share the same travel speed regardless of route length");
+    check(!await page.locator('.clothing-hint').isVisible(), "Hint hides after all five garments are collected");
+    await page.locator('#language').selectOption('ru');
+    await viewport(1024);
+    await page.evaluate(()=>window.scrollBy({top:40,behavior:'instant'}));
+    check(await page.locator('.clothing-toy[hidden]').count()===5, "Collected garments stay hidden through language, resize and scroll");
+    check(await page.locator('.hero-basket').evaluate(b=>getComputedStyle(b).opacity==='0'), "Stowed basket stays hidden through language, resize and scroll");
+    await page.reload();
+    await page.locator('#language').selectOption('uk');
+    await viewport(1440);
+    check(await page.locator('.clothing-toy:visible').count()===5 && await page.locator('.clothing-hint').isVisible(), "Reload restores all garments and hint");
+    check(await page.locator('.hero-basket').evaluate(b=>getComputedStyle(b).opacity==='1'), "Reload also restores the basket");
+
+    await garment("high-top").click();
+    await garment("sneaker").click();
+    await garment("sneaker").click();
+    await garment("backpack").click();
+    await garment("sand-pair").click();
+    await garment("mint-pair").click();
+    check(await page.locator('[data-flight-state="active"]').count() === 1 && await page.locator('[data-flight-state="queued"]').count() === 4 && await page.locator(".clothing-flight-layer").count() === 1, "Rapid clicks queue all five distinct items without duplicate flights");
+    await page.waitForFunction(() => document.querySelector('[data-garment="sneaker"]').dataset.flightState === "active");
+    check(await garment("backpack").getAttribute("data-flight-state") === "queued", "Queue starts sneaker after high-top");
+    await idle();
+    check(await page.locator(".is-playing, .is-catching, .clothing-pop").count() === 0, "Queue finishes and old sparkle effects are absent");
+    check(await page.locator('.clothing-toy[hidden]').count()===5, "Queue collects each garment once");
+    await page.reload();
+
+    await garment("sneaker").focus();
+    await page.keyboard.press("Enter");
+    check(await garment("sneaker").getAttribute("data-flight-state") === "active", "Enter starts the shared flight");
+    await idle();
+    check(!await garment('sneaker').isVisible() && await page.evaluate(()=>document.activeElement?.dataset.garment)==='backpack', "Keyboard collection removes the item from tab order and focuses the next garment");
+    await garment("backpack").focus();
+    await page.keyboard.press("Space");
+    check(await garment("backpack").getAttribute("data-flight-state") === "active", "Space starts the shared flight");
+    await page.locator("#language").selectOption("ru");
+    await idle();
+    check(await page.locator(".is-playing, .is-catching").count() === 0 && await garment("sneaker").getAttribute("aria-label") === "Низкий кроссовок — отправить в корзину", "Changing language cancels cleanly and translates new action");
+    await page.locator("#language").selectOption("en");
+    check(await garment("high-top").getAttribute("aria-label") === "High-top sneaker — send to the basket", "English action translated");
+    await page.locator("#language").selectOption("uk");
+    check(await garment("high-top").getAttribute("aria-label") === "Високий кросівок — відправити в кошик", "Ukrainian action translated");
+    for (const [language,sand,mint] of [
+      ['ru','Песочно-терракотовая пара кроссовок — отправить в корзину','Мятно-серая пара кроссовок — отправить в корзину'],
+      ['en','Sand and terracotta sneaker pair — send to the basket','Mint and gray sneaker pair — send to the basket'],
+      ['uk','Пісочно-теракотова пара кросівок — відправити в кошик',"М'ятно-сіра пара кросівок — відправити в кошик"],
+    ]) {
+      await page.locator('#language').selectOption(language);
+      check(await garment('sand-pair').getAttribute('aria-label')===sand && await garment('mint-pair').getAttribute('aria-label')===mint, `Both new pair actions translated in ${language}`);
+    }
+
+    await garment("high-top").click();
+    await page.evaluate(() => { location.hash = "catalog"; });
+    await page.locator(".catalog-page").waitFor();
+    check(await page.locator(".clothing-flight-layer").count() === 0, "Navigation cancels the flight");
+    await page.goto("http://127.0.0.1:5173/#home");
+    check(await page.locator('.clothing-toy:visible').count()===5, "Returning from another site page restores collected garments");
+    await garment("sneaker").click();
+    await viewport(1024);
+    await idle();
+    check(await page.locator(".is-playing, .is-catching").count() === 0, "Resize restores hidden originals");
+    await garment("sneaker").click();
+    await page.evaluate(() => window.scrollBy({top:80,behavior:"instant"}));
+    await idle();
+    check(await garment("sneaker").locator("img").evaluate(img => getComputedStyle(img).opacity === "1"), "Scrolling cancels and restores the source");
+
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await garment("high-top").click();
+    const reduced = await page.locator(".clothing-flight-layer").evaluate(layer => layer.getAnimations({subtree:true}).every(a => a.effect.getKeyframes().every(f => !("rotate" in f) && !("translate" in f) && !("scale" in f))));
+    check(reduced, "Reduced motion replaces travel and spinning with opacity feedback");
+    check(await page.locator(".clothing-comet-segment").count()===0, "Reduced motion has no comet trail");
+    await idle();
+    check(!await garment('high-top').isVisible(), "Reduced motion also keeps collected artwork hidden");
+    // Headless Chromium keeps all tabs visible, so exercise its visibility event
+    // explicitly rather than claiming bringToFront simulates a background tab.
+    await page.evaluate(()=>{
+      Object.defineProperty(document,'hidden',{configurable:true,value:true});
+      document.dispatchEvent(new Event('visibilitychange'));
+      delete document.hidden;
+    });
+    check(await page.locator('.clothing-toy:visible').count()===5, "Leaving the browser tab resets collected garments");
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await garment('sneaker').click();
+    await page.evaluate(async()=>{
+      const layer=document.querySelector('.clothing-flight-layer');
+      layer.getAnimations({subtree:true}).forEach(a=>a.pause());
+      const item=layer.querySelector('.clothing-flight-item').getAnimations()[0];
+      item.finish();
+      await item.finished;
+    });
+    check(!await garment('sneaker').isVisible(), "Garment is collected at impact before basket's pause finishes");
+    await viewport(1440);
+    await idle();
+    check(!await garment('sneaker').isVisible(), "Cancelling the basket pause does not restore an already collected garment");
+    await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true})));
+    check(await page.locator('.clothing-toy:visible').count()===5, "Browser back/forward cache restoration resets collected garments");
+
+    for (const width of [320,390,621,768,1024,1440]) {
+      await page.reload();
+      await viewport(width);
+      await page.evaluate(() => window.scrollTo({top:0,behavior:"instant"}));
+      const pairsFit = await page.evaluate(()=>{
+        const overlap=(a,b)=>a.left<b.right && a.right>b.left && a.top<b.bottom && a.bottom>b.top;
+        const hero=document.querySelector('.hero').getBoundingClientRect();
+        const items=[...document.querySelectorAll('.clothing-toy')];
+        const controls=[...document.querySelectorAll('.hero .search-form,.hero .category-pills,.hero .hero-explore,.hero .scroll-cue,.hero .floating-card,.hero .floating-note,.clothing-hint')].filter(e=>e.getClientRects().length);
+        return items.filter(e=>e.dataset.garment.endsWith('-pair')).every(a=>{
+          const bounds=a.getBoundingClientRect();
+          return bounds.left>=hero.left && bounds.right<=hero.right && bounds.top>=hero.top && bounds.bottom<=hero.bottom
+            && [...controls,...items.filter(b=>b!==a)].every(b=>!overlap(bounds,b.getBoundingClientRect()));
+        });
+      });
+      check(pairsFit, `New pairs fit without overlapping controls or illustrations at ${width}px`);
+      for (const id of ["sneaker","backpack","high-top","sand-pair","mint-pair"]) {
+        await garment(id).click();
+        check(await page.locator('.clothing-flight-layer').count()===1, `${id}: flight starts at ${width}px: ${errors.join('; ')}`);
+        const geometry = await page.evaluate(() => {
+          const layer=document.querySelector(".clothing-flight-layer");
+          const timing=layer.querySelector(".clothing-flight-item").getAnimations()[0].effect.getTiming();
+          layer.getAnimations({subtree:true}).forEach(a => {a.pause();a.currentTime=timing.delay+timing.duration*.6;});
+          const item=layer.querySelector(".clothing-flight-item").getBoundingClientRect();
+          const hero=document.querySelector(".hero").getBoundingClientRect();
+          const active=document.querySelector('[data-flight-state="active"]');
+          const source=active.querySelector("img").getBoundingClientRect();
+          const logo=document.querySelector(".hero-brand-mark").getBoundingClientRect();
+          const frames=layer.querySelector('.clothing-flight-item').getAnimations()[0].effect.getKeyframes();
+          const above=frames.every(f=>{const [dx,dy=0]=f.translate.split(" ").map(parseFloat);const x=source.x+source.width/2+dx,y=source.y+source.height/2+dy;return x<logo.left+logo.width*.37 || x>logo.left+logo.width*.67 || y<logo.top;});
+          const sourceSize=Math.min(active.querySelector('img').offsetWidth,active.querySelector('img').offsetHeight);
+          const tailBase=Math.max(...[...layer.querySelectorAll('.clothing-comet-segment')].map(t=>parseFloat(getComputedStyle(t).height)));
+          const proportional=Math.abs(tailBase/sourceSize-.6)<.001;
+          layer.getAnimations({subtree:true}).forEach(a=>a.currentTime=timing.duration*.995);
+          const upright=getComputedStyle(layer.querySelector('.clothing-flight-basket')).rotate==='-450deg';
+          return {upright,proportional,above,fits:document.documentElement.scrollWidth<=innerWidth, inside:item.left>=hero.left && item.right<=hero.right && item.top>=hero.top && item.bottom<=hero.bottom};
+        });
+        check(geometry.fits && geometry.inside, `${id}: curved flight stays within hero at ${width}px`);
+        check(geometry.proportional, `${id}: proportional tail at ${width}px`);
+        check(geometry.upright, `${id}: basket is upright before landing at ${width}px`);
+        if (id==="backpack") check(geometry.above, `Backpack crosses above the mascot at ${width}px`);
+        await page.evaluate(() => document.querySelector(".clothing-flight-layer").getAnimations({subtree:true}).forEach(a=>a.finish()));
+        await idle();
+      }
+      check(await page.locator('.hero-basket').evaluate(b=>getComputedStyle(b).opacity==='0' && b.getAnimations().length===0), `Final basket exit completes cleanly at ${width}px`);
+      // Also start each route with every other illustration still on screen.
+      for (const id of ['sneaker','backpack','high-top','sand-pair','mint-pair']) {
+        await page.reload();
+        await garment(id).click();
+        check(await page.locator('.clothing-flight-layer').count()===1, `${id}: flight starts with all five items present at ${width}px`);
+        await page.evaluate(()=>document.querySelector('.clothing-flight-layer').getAnimations({subtree:true}).forEach(a=>a.finish()));
+        await idle();
+      }
+    }
+    check(errors.length === 0, `No browser errors: ${errors.join("; ")}`);
+    return { passed:results.length, results, errors };
+  } finally {
+    await context.close();
+  }
+}
