@@ -1,6 +1,21 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { planFlightPath, sampleFlightPath, fitFlightPath } from "../src/flight-path.js";
+import { planStraightFlight, planFlightPath, sampleFlightPath, fitFlightPath } from "../src/flight-path.js";
+
+test("direct flights keep one straight segment at uniform speed in every direction", () => {
+  const end = {x:100,y:100};
+  for (const start of [{x:20,y:30},{x:240,y:30},{x:20,y:260},{x:240,y:260},{x:100,y:20},{x:20,y:100}]) {
+    const route = planStraightFlight({start,end});
+    assert.equal(route.length,Math.hypot(end.x-start.x,end.y-start.y));
+    for (const progress of [0,.1,.5,.9,1]) {
+      const point = sampleFlightPath(route,route.length*progress);
+      assert.ok(Math.abs(point.x-(start.x+(end.x-start.x)*progress))<1e-9);
+      assert.ok(Math.abs(point.y-(start.y+(end.y-start.y)*progress))<1e-9);
+    }
+    assert.deepEqual(start,route.points[0]);
+    assert.notEqual(start,route.points[0]);
+  }
+});
 
 function checkClearance(route, obstacles, radius) {
   for (let at = 0; at <= route.length; at += 1) {

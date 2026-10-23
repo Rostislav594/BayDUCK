@@ -1,6 +1,6 @@
 export const dictionaries = {
   uk: {
-    pageTitle: "BayDUCK — Твоя пара. Твої правила.",
+    pageTitle: "BuyDUCK — Твоя пара. Твої правила.",
     skip: "Перейти до вмісту",
     announcement: "Знайди свою пару. Решта — справа стилю.",
     deliveryTop: "З України. Для твого ритму.",
@@ -51,7 +51,7 @@ export const dictionaries = {
     collection: "ТВОЄ МІСТО. ТВІЙ СТИЛЬ.",
     storyTitle: "Виходь за\nрамки буденного.",
     storyCopy:
-      "Зручна пара, улюблена сорочка і ціле місто попереду. Збирай свій образ разом із BayDUCK.",
+      "Зручна пара, улюблена сорочка і ціле місто попереду. Збирай свій образ разом із BuyDUCK.",
     storyButton: "Зібрати свій образ",
     storyNote: "ДЛЯ ПЛАНІВ І БЕЗ ПЛАНІВ",
     categories: "Що сьогодні твоє?",
@@ -71,7 +71,7 @@ export const dictionaries = {
     help: "Допомога",
     delivery: "Доставка та оплата",
     returns: "Обмін та повернення",
-    about: "Про BayDUCK",
+    about: "Про BuyDUCK",
     prototype:
       "Клікабельний прототип. Товари, ціни та фото демонстраційні. Замовлення й оплата не виконуються.",
     rights: "У своєму ритмі.",
@@ -132,7 +132,7 @@ export const dictionaries = {
     continueShopping: "Продовжити покупки",
     back: "Назад",
     aboutCopy:
-      "BayDUCK — майбутній український магазин кросівок, одягу та аксесуарів. Ми починаємо з простої ідеї: речі мають пасувати твоєму життю і характеру.",
+      "BuyDUCK — майбутній український магазин кросівок, одягу та аксесуарів. Ми починаємо з простої ідеї: речі мають пасувати твоєму життю і характеру.",
     deliveryCopy:
       "Способи доставки, перевізники, строки та оплата ще визначаються. У прототипі можна перевірити сценарій оформлення без реальної покупки.",
     returnsCopy:
@@ -141,7 +141,7 @@ export const dictionaries = {
       "Браузер не дозволив зберегти вибір. Він збережеться до закриття сторінки.",
   },
   ru: {
-    pageTitle: "BayDUCK — Твоя пара. Твои правила.",
+    pageTitle: "BuyDUCK — Твоя пара. Твои правила.",
     skip: "Перейти к содержимому",
     announcement: "Найди свою пару. Остальное — дело стиля.",
     deliveryTop: "Из Украины. Для твоего ритма.",
@@ -193,7 +193,7 @@ export const dictionaries = {
     collection: "ТВОЙ ГОРОД. ТВОЙ СТИЛЬ.",
     storyTitle: "Выходи за\nрамки обычного.",
     storyCopy:
-      "Удобная пара, любимая рубашка и целый город впереди. Собирай свой образ вместе с BayDUCK.",
+      "Удобная пара, любимая рубашка и целый город впереди. Собирай свой образ вместе с BuyDUCK.",
     storyButton: "Собрать свой образ",
     storyNote: "ДЛЯ ПЛАНОВ И БЕЗ ПЛАНОВ",
     categories: "Что сегодня твоё?",
@@ -213,7 +213,7 @@ export const dictionaries = {
     help: "Помощь",
     delivery: "Доставка и оплата",
     returns: "Обмен и возврат",
-    about: "О BayDUCK",
+    about: "О BuyDUCK",
     prototype:
       "Кликабельный прототип. Товары, цены и фото демонстрационные. Заказы и оплата не выполняются.",
     rights: "В своём ритме.",
@@ -274,7 +274,7 @@ export const dictionaries = {
     continueShopping: "Продолжить покупки",
     back: "Назад",
     aboutCopy:
-      "BayDUCK — будущий украинский магазин кроссовок, одежды и аксессуаров. Мы начинаем с простой идеи: вещи должны подходить твоей жизни и характеру.",
+      "BuyDUCK — будущий украинский магазин кроссовок, одежды и аксессуаров. Мы начинаем с простой идеи: вещи должны подходить твоей жизни и характеру.",
     deliveryCopy:
       "Способы доставки, перевозчики, сроки и оплата ещё определяются. В прототипе можно проверить сценарий оформления без реальной покупки.",
     returnsCopy:
@@ -283,7 +283,7 @@ export const dictionaries = {
       "Браузер не позволил сохранить выбор. Он сохранится до закрытия страницы.",
   },
   en: {
-    pageTitle: "BayDUCK — Your pair. Your rules.",
+    pageTitle: "BuyDUCK — Your pair. Your rules.",
     skip: "Skip to content",
     announcement: "Find your pair. Let your style do the rest.",
     deliveryTop: "From Ukraine. For your everyday.",
@@ -335,7 +335,7 @@ export const dictionaries = {
     collection: "YOUR CITY. YOUR STYLE.",
     storyTitle: "Step outside\nthe everyday.",
     storyCopy:
-      "Your favorite shirt, a comfortable pair and a whole city ahead. Make it your look with BayDUCK.",
+      "Your favorite shirt, a comfortable pair and a whole city ahead. Make it your look with BuyDUCK.",
     storyButton: "Build your look",
     storyNote: "FOR PLANS AND NO PLANS",
     categories: "What feels like you?",
@@ -355,7 +355,7 @@ export const dictionaries = {
     help: "Help",
     delivery: "Delivery & payment",
     returns: "Exchanges & returns",
-    about: "About BayDUCK",
+    about: "About BuyDUCK",
     prototype:
       "Clickable prototype. Products, prices and photos are for demonstration. No orders or payments are processed.",
     rights: "At your own pace.",
@@ -416,7 +416,7 @@ export const dictionaries = {
     continueShopping: "Keep exploring",
     back: "Back",
     aboutCopy:
-      "BayDUCK is an upcoming Ukrainian sneaker, clothing and accessories store. We start with a simple idea: what you wear should fit your life and your character.",
+      "BuyDUCK is an upcoming Ukrainian sneaker, clothing and accessories store. We start with a simple idea: what you wear should fit your life and your character.",
     deliveryCopy:
       "Delivery options, carriers, timelines and payment methods are being decided. Try the checkout flow here without making a real purchase.",
     returnsCopy:

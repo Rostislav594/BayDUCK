@@ -2,7 +2,7 @@ export const products = [
   {
     id: "court",
     name: "Court Essential",
-    brand: "BayDUCK Studio",
+    brand: "BuyDUCK Studio",
     type: "sneakers",
     gender: "unisex",
     price: 3290,
@@ -15,7 +15,7 @@ export const products = [
   {
     id: "retro",
     name: "Retro Runner 02",
-    brand: "BayDUCK Studio",
+    brand: "BuyDUCK Studio",
     type: "sneakers",
     gender: "men",
     price: 4190,
@@ -27,7 +27,7 @@ export const products = [
   {
     id: "daily",
     name: "Daily Low",
-    brand: "BayDUCK Studio",
+    brand: "BuyDUCK Studio",
     type: "sneakers",
     gender: "women",
     price: 2890,
@@ -39,7 +39,7 @@ export const products = [
   {
     id: "red",
     name: "Air Motion",
-    brand: "BayDUCK Studio",
+    brand: "BuyDUCK Studio",
     type: "sneakers",
     gender: "unisex",
     price: 3690,
@@ -52,7 +52,7 @@ export const products = [
   {
     id: "urban",
     name: "Urban Low",
-    brand: "BayDUCK Studio",
+    brand: "BuyDUCK Studio",
     type: "sneakers",
     gender: "unisex",
     price: 3890,
@@ -64,7 +64,7 @@ export const products = [
   {
     id: "shirt",
     name: "Everyday Shirt",
-    brand: "BayDUCK Studio",
+    brand: "BuyDUCK Studio",
     type: "clothing",
     gender: "unisex",
     price: 2190,
@@ -76,7 +76,7 @@ export const products = [
   {
     id: "hoodie",
     name: "Weekend Hoodie",
-    brand: "BayDUCK Studio",
+    brand: "BuyDUCK Studio",
     type: "clothing",
     gender: "unisex",
     price: 2490,
@@ -88,7 +88,7 @@ export const products = [
   {
     id: "backpack",
     name: "City Backpack",
-    brand: "BayDUCK Studio",
+    brand: "BuyDUCK Studio",
     type: "accessories",
     gender: "unisex",
     price: 1790,

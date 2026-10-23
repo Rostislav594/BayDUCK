@@ -543,19 +543,6 @@ main:focus {
   width: 20px;
   height: 20px;
 }
-.hero-explore {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  font-size: 12px;
-  margin-top: 20px;
-  border-bottom: 1px solid #a6a6a6;
-  padding-bottom: 4px;
-}
-.hero-explore > .icon {
-  width: 15px;
-  height: 15px;
-}
 .floating-card {
   position: absolute;
   z-index: 2;
@@ -689,18 +676,6 @@ main:focus {
   background: var(--ink);
   color: white;
   border-color: var(--ink);
-}
-.scroll-cue {
-  font-size: 10px;
-  color: #8b8b8b;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 30px;
-}
-.scroll-cue > .icon {
-  width: 14px;
-  height: 14px;
 }
 /* The browseable product sections. */
 .content-wrap {
@@ -1964,9 +1939,6 @@ dialog::backdrop {
   .hero .search-form {
     max-width: 360px;
   }
-  .hero-explore {
-    margin-top: 15px;
-  }
   .float-one {
     width: 124px;
     left: 5%;
@@ -2025,10 +1997,6 @@ dialog::backdrop {
   }
   .hero .category-pill > .icon:last-child:not(:first-child) {
     display: none;
-  }
-  .scroll-cue {
-    margin-top: 20px;
-    font-size: 9px;
   }
   .content-wrap {
     padding-inline: 20px;
@@ -2315,9 +2283,6 @@ dialog::backdrop {
     width: 14px;
     height: 14px;
   }
-  .scroll-cue {
-    margin-top: 23px;
-  }
   .section-heading {
     align-items: flex-start;
   }
@@ -2509,7 +2474,6 @@ dialog::backdrop {
 .price del {
   font-size: 12px;
 }
-.hero-explore,
 .text-link {
   font-size: 14px;
 }
@@ -2650,19 +2614,120 @@ dialog::backdrop {
     display: none;
   }
 }
-/* Phone hero: no floating cards or extra links, categories sit right under search. */
-@media (max-width: 780px) {
-  .hero .floating-card,
-  .hero-explore,
-  .scroll-cue {
-    display: none;
-  }
+/* Shared hero: scattered product cards below the categories on every screen. */
+.hero {
+  --hero-card-width: clamp(156px, 14vw, 196px);
+  --hero-extra-row: 0px;
+  min-height: 0;
+}
+.hero .float-one,
+.hero .float-two,
+.hero .float-three {
+  display: block;
+  top: auto;
+  bottom: 40px;
+  width: var(--hero-card-width);
+  padding: 5px;
+  border-radius: 20px;
+}
+.hero .float-one {
+  left: 6%;
+  bottom: 76px;
+  rotate: -11deg;
+}
+.hero .float-two {
+  right: 6%;
+  width: calc(var(--hero-card-width) - 6px);
+  bottom: 58px;
+  rotate: 12deg;
+}
+.hero .float-three {
+  left: 50%;
+  width: calc(var(--hero-card-width) - 14px);
+  right: auto;
+  translate: -50% 0;
+  rotate: -4deg;
+}
+.hero .floating-card > img {
+  height: auto;
+  aspect-ratio: 1;
+  border-radius: 15px;
+}
+.hero .floating-card > span {
+  font-size: 12px;
+  line-height: 1.25;
+  padding: 8px 2px 4px;
+  gap: 4px;
+}
+.hero-bottom {
+  /* Leave a lane for the cartoon sneakers between categories and cards. */
+  padding: 24px 0 calc(var(--hero-card-width) + 190px + var(--hero-extra-row));
+}
+@media (min-width: 781px) {
   .hero {
-    min-height: 0;
+    padding-top: 48px;
   }
-  .hero-bottom {
-    /* Bottom room keeps the cartoon sneakers clear of the pills. */
-    padding: 24px 0 72px;
+  .hero .hero-copy {
+    max-width: 520px;
+  }
+  .hero .hero-wordmark {
+    max-width: 100%;
+  }
+  .hero .search-form {
+    max-width: 430px;
+  }
+}
+.hero .floating-note {
+  display: none;
+}
+@media (min-width: 781px) and (max-width: 1000px) {
+  .hero .category-pills {
+    gap: 7px;
+  }
+  .hero .category-pill {
+    font-size: 12px;
+    padding: 10px;
+    gap: 6px;
+  }
+  .hero .category-pill > .icon {
+    width: 14px;
+    height: 14px;
+  }
+}
+@media (max-width: 780px) {
+  .hero {
+    --hero-card-width: clamp(112px, 26vw, 140px);
+  }
+}
+@media (max-width: 600px) {
+  .hero .float-one {
+    bottom: 48px;
+  }
+  .hero .float-two {
+    bottom: 44px;
+  }
+}
+@media (max-width: 560px) {
+  .hero {
+    --hero-extra-row: calc(var(--hero-card-width) + 68px);
+  }
+  .hero .float-one,
+  .hero .float-three {
+    bottom: calc(40px + var(--hero-extra-row));
+  }
+  .hero .float-one {
+    bottom: calc(48px + var(--hero-extra-row));
+  }
+  .hero .float-three {
+    left: auto;
+    right: 6%;
+    translate: none;
+  }
+  .hero .float-two {
+    left: 46%;
+    right: auto;
+    bottom: 44px;
+    translate: -50% 0;
   }
 }
 @media (prefers-reduced-motion: reduce) {

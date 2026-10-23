@@ -1,4 +1,4 @@
-import { planFlightPath, sampleFlightPath, fitFlightPath } from "./flight-path.js";
+import { planStraightFlight, sampleFlightPath } from "./flight-path.js";
 
 const garments = [
   { id: "sneaker", label: "playSneaker" },
@@ -91,26 +91,6 @@ function flightCopy(image, className, layer, heroBounds) {
   });
   layer.append(copy);
   return copy;
-}
-
-function flightObstacles(hero, button, heroBounds) {
-  const rect = element => {
-    const r = element.getBoundingClientRect();
-    return {left:r.left-heroBounds.left, right:r.right-heroBounds.left, top:r.top-heroBounds.top, bottom:r.bottom-heroBounds.top};
-  };
-  const logo = rect(hero.querySelector(".hero-brand-mark"));
-  const width = logo.right-logo.left, height = logo.bottom-logo.top;
-  // The PNG's upper corners are transparent; protect the visible letters and duck.
-  const obstacles = [
-    {...logo, top:logo.top+height*.52, bottom:logo.top+height*.94},
-    {...logo, left:logo.left+width*.37, right:logo.left+width*.67, bottom:logo.top+height*.77},
-  ];
-  for (const element of hero.querySelectorAll(".search-form, .category-pills, .hero-explore, .scroll-cue, .floating-card, .floating-note, .clothing-hint, .clothing-toy")) {
-    if (element === button || !element.getClientRects().length) continue;
-    const bounds = rect(element);
-    if (bounds.right > bounds.left && bounds.bottom > bounds.top) obstacles.push(bounds);
-  }
-  return obstacles;
 }
 
 function flightScale(route, at, catchDistance) {
@@ -219,41 +199,34 @@ async function flyToBasket(button) {
     } else {
       const start = {x:sourceBounds.left+sourceBounds.width/2-heroBounds.left, y:sourceBounds.top+sourceBounds.height/2-heroBounds.top};
       const basketCentre = {x:basketBounds.left+basketBounds.width/2-heroBounds.left, y:basketBounds.top+basketBounds.height/2-heroBounds.top};
-      const approach = {x:basketCentre.x, y:basketCentre.y-basketBounds.width*.85};
-      const end = {x:basketCentre.x, y:basketCentre.y+basketBounds.width*.17};
-      const travelSize = heroBounds.width < 420 ? 16 : 28;
-      const obstacles = flightObstacles(hero, button, heroBounds);
-      // Extending the duck's protected region down to the hero floor prevents
-      // the backpack from choosing a lower route when its top corridor is tight.
-      const routeObstacles = button.dataset.garment === "backpack"
-        ? [...obstacles, {...obstacles[1], bottom:heroBounds.height+1}]
-        : obstacles;
-      const plannedRoute = planFlightPath({start, approach, end, width:heroBounds.width, height:heroBounds.height, obstacles:routeObstacles, radius:travelSize/2, minClearance:1});
+      const route = planStraightFlight({start, end:basketCentre});
       const diameter = Math.hypot(image.offsetWidth,image.offsetHeight);
-      const catchDistance = Math.max(basketBounds.width*.76,diameter*.7);
-      // Include the maximum flight tilt in the footprint, without changing scale.
-      const angle = Math.max(16,Math.abs(parseFloat(initialRotation)||0))*Math.PI/180;
-      const halfWidth = (image.offsetWidth*Math.cos(angle)+image.offsetHeight*Math.sin(angle))/2;
-      const halfHeight = (image.offsetHeight*Math.cos(angle)+image.offsetWidth*Math.sin(angle))/2;
-      const route = fitFlightPath(plannedRoute,{width:heroBounds.width,height:heroBounds.height,halfWidth,halfHeight,catchDistance});
-      // One physical speed for every item; longer detours take longer to finish.
-      const duration = route.length/.4;
+      const catchDistance = Math.min(route.length*.45, Math.max(basketBounds.width*.76,diameter*.7));
+      // In the original sideways artwork the opening faces right.
+      const catchAngle = Math.atan2(start.y-basketCentre.y,start.x-basketCentre.x)*180/Math.PI;
+      // The nearby sand pair travels at half speed so its short flight is readable.
+      const speed = button.dataset.garment === "sand-pair" ? .2 : .4;
+      const duration = route.length/speed;
       const delay = 0, landing = duration;
-      const spinDuration = Math.min(600,duration*.65), spinEnd = spinDuration;
+      const turnDuration = Math.min(450,duration*.65);
       const glowEnd = landing+300, returnStart = glowEnd+1000;
-      const returnEnd = returnStart+spinDuration/5, total = returnEnd;
-      // A single linear 450-degree turn, with no easing seam at 360 degrees.
-      // Start with the item, hold upright for its arrival, then turn back at the
-      // same angular speed (a fifth of the spin duration for 90 degrees).
-      const basketFrames = [{rotate:"0deg",offset:0}];
-      basketFrames.push({rotate:"-450deg",offset:spinEnd/total}, {rotate:"-450deg",offset:returnStart/total}, {rotate:"-360deg",offset:1});
+      const restingAngle = catchAngle < 0 ? -360 : 360;
+      const returnDuration = Math.max(180,Math.abs(restingAngle-catchAngle)/.75);
+      const total = returnStart+returnDuration;
+      // Aim the opening at the source, hold for impact, then finish the turn.
+      const basketFrames = [
+        {rotate:"0deg",offset:0},
+        {rotate:catchAngle+"deg",offset:turnDuration/total},
+        {rotate:catchAngle+"deg",offset:returnStart/total},
+        {rotate:restingAngle+"deg",offset:1},
+      ];
       const basketAnimation = animate(basketCopy, basketFrames, {duration:total, easing:"linear"});
       // Highlight the existing rim pixels rather than lighting the whole basket.
       const rimCopy = flightCopy(basket,"clothing-flight-rim",layer,heroBounds);
       const rimRotation = animate(rimCopy,basketFrames,{duration:total,easing:"linear"});
       const rimLight = animate(rimCopy,[
         {opacity:0,offset:0},
-        {opacity:0,offset:(landing-80)/total},
+        {opacity:0,offset:Math.max(0,landing-80)/total},
         {opacity:.85,offset:(landing+30)/total},
         {opacity:0,offset:glowEnd/total},
         {opacity:0,offset:1},

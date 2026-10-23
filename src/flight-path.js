@@ -2,6 +2,12 @@ const distance = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
 const mix = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
 const inside = (p, r) => p.x > r.left && p.x < r.right && p.y > r.top && p.y < r.bottom;
 
+// Direct collection flights intentionally cross the hero instead of detouring.
+export function planStraightFlight({start, end}) {
+  const length = distance(start, end);
+  return {points:[{...start}, {...end}], lengths:[0, length], length};
+}
+
 function intersects(a, b, rect) {
   let low = 0, high = 1;
   for (const [origin, delta, min, max] of [

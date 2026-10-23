@@ -172,39 +172,88 @@
     height: 80px;
   }
 }
-@media (max-width: 780px) {
+.hero {
+  padding-bottom: 0;
+}
+.clothing-toy--sneaker {
+  left: calc(50% - 60px);
+  bottom: calc(var(--hero-card-width) + 102px + var(--hero-extra-row));
+  width: 54px;
+  height: 62px;
+  rotate: -23deg;
+}
+.clothing-toy--backpack {
+  right: 6%;
+  top: 16px;
+  width: 54px;
+  height: 64px;
+}
+.clothing-toy--high-top {
+  right: max(22px, calc(50% - 270px));
+  bottom: calc(var(--hero-card-width) + 145px + var(--hero-extra-row));
+  width: 56px;
+  height: 72px;
+  rotate: -8deg;
+}
+.clothing-toy--sand-pair {
+  left: 10%;
+  top: 20px;
+  width: 58px;
+  height: 58px;
+  rotate: -17deg;
+}
+.clothing-toy--mint-pair {
+  left: max(14px, calc(50% - 280px));
+  bottom: calc(var(--hero-card-width) + 207px + var(--hero-extra-row));
+  width: 62px;
+  height: 62px;
+  rotate: 5deg;
+}
+.clothing-hint {
+  font-size: 10px;
+}
+@media (min-width: 781px) {
   .clothing-toy--sneaker {
-    left: max(18px, calc(50% - 190px));
-    bottom: 110px;
-    width: 54px;
-    height: 62px;
+    left: calc(50% - 70px);
+    bottom: calc(var(--hero-card-width) + 84px);
+    width: 68px;
+    height: 80px;
   }
-  .clothing-toy--backpack {
-    right: 6%;
-    top: 16px;
-    width: 54px;
-    height: 64px;
+  .clothing-toy--mint-pair {
+    left: max(16px, calc(50% - 340px));
+    width: 76px;
+    height: 76px;
   }
   .clothing-toy--high-top {
-    right: 8%;
-    bottom: 30px;
-    width: 56px;
-    height: 72px;
+    right: max(18px, calc(50% - 330px));
+    width: 68px;
+    height: 88px;
   }
   .clothing-toy--sand-pair {
-    left: 6%;
-    top: 12px;
-    width: 58px;
-    height: 58px;
+    left: 12%;
+    top: 32px;
+    width: 66px;
+    height: 66px;
+  }
+  .clothing-toy--backpack {
+    right: 10%;
+    top: 24px;
+    width: 64px;
+    height: 78px;
+  }
+}
+@media (max-width: 600px) {
+  /* When the category row fills the screen, keep side artwork just below it. */
+  .clothing-toy--sneaker {
+    left: calc(50% - 30px);
   }
   .clothing-toy--mint-pair {
     left: 6%;
-    bottom: 30px;
-    width: 62px;
-    height: 62px;
+    bottom: calc(var(--hero-card-width) + 115px + var(--hero-extra-row));
   }
-  .clothing-hint {
-    font-size: 10px;
+  .clothing-toy--high-top {
+    right: 12%;
+    bottom: calc(var(--hero-card-width) + 89px + var(--hero-extra-row));
   }
 }
 @media (max-width: 360px) {
@@ -212,9 +261,6 @@
     top: 10px;
     width: 48px;
     height: 48px;
-  }
-  .clothing-toy--high-top {
-    bottom: 30px;
   }
   .clothing-hint {
     bottom: 8px;
