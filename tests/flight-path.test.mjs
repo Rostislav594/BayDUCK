@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { planStraightFlight, planFlightPath, sampleFlightPath, fitFlightPath } from "../src/flight-path.js";
+import { planStraightFlight, planDropFlight, planFlightPath, sampleFlightPath, fitFlightPath } from "../src/flight-path.js";
 
 test("direct flights keep one straight segment at uniform speed in every direction", () => {
   const end = {x:100,y:100};
@@ -90,4 +90,49 @@ test("full-size path fitting keeps artwork in bounds and remeasures distance for
   }
   assert.equal(fitted.length,fitted.lengths.at(-1));
   assert.deepEqual(fitted.points.at(-1),route.points.at(-1));
+});
+
+const dropHero = {basket:{x:196,y:184,width:71}, width:873, height:730, pad:59, catchDistance:82, loopRadius:88};
+const basketRect = ({x,y,width}) => ({left:x-width/2, right:x+width/2, top:y-width/2, bottom:y+width/2});
+
+test("collection flights end with a strictly vertical drop into the upright basket", () => {
+  for (const start of [{x:138,y:65},{x:754,y:63},{x:400,y:450},{x:733,y:385},{x:134,y:329}]) {
+    const route = planDropFlight({...dropHero, start});
+    assert.deepEqual(route.points[0], start);
+    assert.deepEqual(route.points.at(-1), {x:196, y:184+71*.17});
+    for (let at = route.length-dropHero.catchDistance+1; at <= route.length; at += 4) {
+      const p = sampleFlightPath(route, at);
+      assert.ok(Math.abs(p.x-196) < 1e-9 && Math.abs(p.angle-90) < 1e-9, `vertical at ${at}`);
+    }
+    for (let d = 4; d < route.length; d += 4) {
+      const a = sampleFlightPath(route, d-4), b = sampleFlightPath(route, d);
+      assert.ok(Math.hypot(b.x-a.x, b.y-a.y) <= 4.001);
+    }
+  }
+});
+
+test("only items starting below the basket fly one full loop, clear of the basket", () => {
+  const rect = basketRect(dropHero.basket);
+  for (const start of [{x:138,y:65},{x:754,y:63}]) assert.equal(planDropFlight({...dropHero, start}).loop, null);
+  for (const start of [{x:400,y:450},{x:733,y:385},{x:134,y:329}]) {
+    const route = planDropFlight({...dropHero, start});
+    assert.ok(route.loop, `loop from ${start.x},${start.y}`);
+    const {start:from, end:to, radius} = route.loop;
+    assert.ok(radius >= dropHero.loopRadius/2 && Math.abs(route.loop.turn) === 1);
+    assert.deepEqual(route.points[from], route.points[to]);
+    const loop = route.points.slice(from, to+1);
+    const xs = loop.map(p => p.x), ys = loop.map(p => p.y);
+    assert.ok(Math.max(...xs)-Math.min(...xs) > radius*1.9 && Math.max(...ys)-Math.min(...ys) > radius*1.9, "a whole circle");
+    assert.ok(loop.every(p => p.x >= dropHero.pad && p.x <= dropHero.width-dropHero.pad && p.y >= dropHero.pad && p.y <= dropHero.height-dropHero.pad), "loop stays in the hero");
+    // Below the rim, the full-size artwork passes beside the basket, never through it.
+    const rising = route.points.slice(0, route.points.length - Math.ceil(dropHero.catchDistance/4) - 2);
+    assert.ok(rising.every(p => p.y < rect.top || p.x <= rect.left-dropHero.pad*.5 || p.x >= rect.right+dropHero.pad*.5 || p.y >= rect.bottom+dropHero.pad*.5), "beside the basket");
+  }
+});
+
+test("path fitting keeps a planned drop exactly above the basket at the hero edge", () => {
+  const planned = planDropFlight({start:{x:185,y:353}, basket:{x:31,y:125,width:46}, width:375, height:777, pad:36, catchDistance:50, loopRadius:53});
+  const fitted = fitFlightPath(planned, {width:375, height:777, halfWidth:34, halfHeight:34, catchDistance:50});
+  assert.ok(fitted.points.slice(planned.dropStart).every(p => p.x === 31));
+  assert.ok(fitted.points.slice(0, planned.dropStart).every(p => p.x >= 34));
 });

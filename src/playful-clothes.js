@@ -1,4 +1,4 @@
-import { planStraightFlight, sampleFlightPath } from "./flight-path.js";
+import { planDropFlight, sampleFlightPath, fitFlightPath } from "./flight-path.js";
 
 const garments = [
   { id: "sneaker", label: "playSneaker" },
@@ -98,17 +98,20 @@ function flightScale(route, at, catchDistance) {
 }
 
 function flightFrames(route, start, initialRotation, basketWidth, catchDistance) {
-  return Array.from({length:161}, (_, index) => {
-    const progress = index/160, at = progress*route.length;
+  const loop = route.loop && {from:route.lengths[route.loop.start], to:route.lengths[route.loop.end], turn:route.loop.turn};
+  return Array.from({length:241}, (_, index) => {
+    const progress = index/240, at = progress*route.length;
     const point = sampleFlightPath(route, at);
     const dropStart = route.length-catchDistance;
     const launch = Math.min(1, progress/.12);
     const dive = Math.max(0, (at-dropStart)/(route.length-dropStart));
     const scale = flightScale(route,at,catchDistance);
     const tilt = Math.max(-16, Math.min(16, Math.cos(point.angle*Math.PI/180)*16));
+    // The artwork turns once with the loop, like a plane, and is upright again after it.
+    const spin = loop ? loop.turn*360*Math.max(0, Math.min(1, (at-loop.from)/(loop.to-loop.from))) : 0;
     return {
       offset:progress, translate:`${point.x-start.x}px ${point.y-start.y}px`,
-      scale, rotate:`${initialRotation*(1-launch)+tilt*launch*(1-dive)}deg`,
+      scale, rotate:`${initialRotation*(1-launch)+tilt*launch*(1-dive)+spin}deg`,
       opacity:Math.min(1, (route.length-at)/Math.max(1,basketWidth*.18)),
     };
   });
@@ -117,6 +120,7 @@ function flightFrames(route, start, initialRotation, basketWidth, catchDistance)
 function cometAnimations(route, layer, animate, options, image, catchDistance) {
   const size = Math.min(image.offsetWidth,image.offsetHeight);
   const length = size*.65, baseWidth = size*.6;
+  const samples = route.loop ? 240 : 160;
   return Array.from({length:9}, (_, index) => {
     const segment = document.createElement("span");
     segment.className = "clothing-comet-segment";
@@ -125,8 +129,8 @@ function cometAnimations(route, layer, animate, options, image, catchDistance) {
     Object.assign(segment.style, {width:`${width}px`, height:`${height}px`, boxShadow:`0 0 ${size*.07}px #3185ff65`});
     layer.prepend(segment);
     let angle = 0;
-    const frames = Array.from({length:161}, (_, frame) => {
-      const progress = frame/160, head = progress*route.length;
+    const frames = Array.from({length:samples+1}, (_, frame) => {
+      const progress = frame/samples, head = progress*route.length;
       const scale = flightScale(route,head,catchDistance);
       // Attach the broad base just behind the artwork, then follow its turns.
       const point = sampleFlightPath(route, head-(size*.25+lag)*scale);
@@ -199,36 +203,30 @@ async function flyToBasket(button) {
     } else {
       const start = {x:sourceBounds.left+sourceBounds.width/2-heroBounds.left, y:sourceBounds.top+sourceBounds.height/2-heroBounds.top};
       const basketCentre = {x:basketBounds.left+basketBounds.width/2-heroBounds.left, y:basketBounds.top+basketBounds.height/2-heroBounds.top};
-      const route = planStraightFlight({start, end:basketCentre});
       const diameter = Math.hypot(image.offsetWidth,image.offsetHeight);
-      const catchDistance = Math.min(route.length*.45, Math.max(basketBounds.width*.76,diameter*.7));
-      // In the original sideways artwork the opening faces right.
-      const catchAngle = Math.atan2(start.y-basketCentre.y,start.x-basketCentre.x)*180/Math.PI;
-      // The nearby sand pair travels at half speed so its short flight is readable.
-      const speed = button.dataset.garment === "sand-pair" ? .2 : .4;
-      const duration = route.length/speed;
+      const catchDistance = Math.max(basketBounds.width*.76,diameter*.7);
+      // The basket stays upright; every item drops into its opening from above.
+      // Items starting below the basket fly a loop first, sized to fit the hero.
+      const planned = planDropFlight({
+        start, basket:{x:basketCentre.x, y:basketCentre.y, width:basketBounds.width},
+        width:heroBounds.width, height:heroBounds.height, pad:diameter/2+1,
+        catchDistance, loopRadius:Math.max(diameter*.75, basketBounds.width),
+      });
+      // Include the maximum flight tilt in the footprint, without changing scale.
+      const angle = Math.max(16,Math.abs(parseFloat(initialRotation)||0))*Math.PI/180;
+      const halfWidth = (image.offsetWidth*Math.cos(angle)+image.offsetHeight*Math.sin(angle))/2;
+      const halfHeight = (image.offsetHeight*Math.cos(angle)+image.offsetWidth*Math.sin(angle))/2;
+      const route = fitFlightPath(planned,{width:heroBounds.width,height:heroBounds.height,halfWidth,halfHeight,catchDistance});
+      // Every item reaches the basket in the same time, whatever its route length.
+      const duration = 1500;
       const delay = 0, landing = duration;
-      const turnDuration = Math.min(450,duration*.65);
-      const glowEnd = landing+300, returnStart = glowEnd+1000;
-      const restingAngle = catchAngle < 0 ? -360 : 360;
-      const returnDuration = Math.max(180,Math.abs(restingAngle-catchAngle)/.75);
-      const total = returnStart+returnDuration;
-      // Aim the opening at the source, hold for impact, then finish the turn.
-      const basketFrames = [
-        {rotate:"0deg",offset:0},
-        {rotate:catchAngle+"deg",offset:turnDuration/total},
-        {rotate:catchAngle+"deg",offset:returnStart/total},
-        {rotate:restingAngle+"deg",offset:1},
-      ];
-      const basketAnimation = animate(basketCopy, basketFrames, {duration:total, easing:"linear"});
+      const glowEnd = landing+300, total = glowEnd;
       // Highlight the existing rim pixels rather than lighting the whole basket.
       const rimCopy = flightCopy(basket,"clothing-flight-rim",layer,heroBounds);
-      const rimRotation = animate(rimCopy,basketFrames,{duration:total,easing:"linear"});
       const rimLight = animate(rimCopy,[
         {opacity:0,offset:0},
         {opacity:0,offset:Math.max(0,landing-80)/total},
         {opacity:.85,offset:(landing+30)/total},
-        {opacity:0,offset:glowEnd/total},
         {opacity:0,offset:1},
       ],{duration:total,easing:"linear"});
       const options = {delay, duration, easing:"linear"};
@@ -236,7 +234,7 @@ async function flyToBasket(button) {
       const tail = cometAnimations(route,layer,animate,options,image,catchDistance);
       await Promise.all([
         itemAnimation.finished.then(() => collectGarment(flight)),
-        ...[basketAnimation,rimRotation,rimLight,...tail].map(animation => animation.finished),
+        ...[rimLight,...tail].map(animation => animation.finished),
       ]);
     }
     if (!flight.cancelled && collectedGarments.size === garments.length) {
@@ -248,8 +246,9 @@ async function flyToBasket(button) {
       const frames = motionPreference.matches
         ? [{opacity:1},{opacity:0}]
         : [
-          {translate:"0px 0px",clipPath:"inset(0 0% 0 0)"},
-          {translate:`${basketBounds.width*1.2}px 0px`,clipPath:"inset(0 100% 0 0)"},
+          // The artwork is rotated upright, so its local bottom edge faces the B.
+          {translate:"0px 0px",clipPath:"inset(0 0 0% 0)"},
+          {translate:`${basketBounds.width*1.2}px 0px`,clipPath:"inset(0 0 100% 0)"},
         ];
       await animate(basket,frames,{
         duration:motionPreference.matches ? 180 : 900,

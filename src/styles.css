@@ -129,7 +129,8 @@ main:focus {
   overflow: hidden;
 }
 #app {
-  margin-inline: 68px;
+  /* Room for the fixed left rail only; the right edge stays flush. */
+  margin-left: 68px;
 }
 .icon-button {
   width: 42px;
@@ -452,6 +453,8 @@ main:focus {
   z-index: 0;
   width: 14.8%;
   margin-bottom: 2.4%;
+  /* The artwork is drawn sideways (opening right); show it upright. */
+  rotate: -90deg;
 }
 .eyebrow {
   font-size: 10px;
@@ -1844,7 +1847,7 @@ dialog::backdrop {
 }
 @media (max-width: 780px) {
   #app {
-    margin-inline: 0;
+    margin-left: 0;
   }
   .sidebar {
     display: none;
@@ -2728,6 +2731,77 @@ dialog::backdrop {
     right: auto;
     bottom: 44px;
     translate: -50% 0;
+  }
+}
+/* Extra desktop cards fill the gaps of the bottom row from 1001px and the
+   hero's empty upper corners from 1101px, where the side columns are wide enough. */
+.hero .float-four,
+.hero .float-five,
+.hero .float-six,
+.hero .float-seven {
+  display: none;
+}
+@media (min-width: 901px) {
+  /* Every card has its own size and tilt. */
+  .hero .float-one {
+    width: var(--hero-card-width);
+    rotate: -11deg;
+  }
+  .hero .float-two {
+    width: calc(var(--hero-card-width) * 0.86);
+    rotate: 12deg;
+  }
+  .hero .float-three {
+    width: calc(var(--hero-card-width) * 0.79);
+    rotate: -4deg;
+  }
+}
+@media (min-width: 1001px) {
+  .hero .float-six,
+  .hero .float-seven {
+    display: block;
+    padding: 5px;
+    border-radius: 20px;
+  }
+  .hero .float-six {
+    left: 32%;
+    bottom: 96px;
+    width: calc(var(--hero-card-width) * 0.58);
+    translate: -50% 0;
+    rotate: -7deg;
+  }
+  .hero .float-seven {
+    right: 32%;
+    bottom: 66px;
+    width: calc(var(--hero-card-width) * 0.72);
+    translate: 50% 0;
+    rotate: 5deg;
+  }
+  .hero .float-six > span {
+    font-size: 11px;
+  }
+}
+@media (min-width: 1101px) {
+  .hero .float-four,
+  .hero .float-five {
+    display: block;
+    padding: 5px;
+    border-radius: 20px;
+  }
+  .hero .float-four {
+    left: 3.5%;
+    top: 128px;
+    width: calc(var(--hero-card-width) * 0.65);
+    rotate: 8deg;
+  }
+  .hero .float-five {
+    right: 3%;
+    top: 132px;
+    width: calc(var(--hero-card-width) * 0.93);
+    rotate: -14deg;
+  }
+  .hero .float-four > span {
+    font-size: 11px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

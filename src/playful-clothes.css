@@ -111,6 +111,11 @@
 .clothing-flight-basket {
   z-index: 2;
 }
+/* The sideways basket artwork is shown upright: base down, opening up. */
+.clothing-flight-basket,
+.clothing-flight-rim {
+  rotate: -90deg;
+}
 .clothing-flight-rim {
   z-index: 3;
   opacity: 0;

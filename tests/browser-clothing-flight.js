@@ -3,7 +3,7 @@ async (browserPage) => {
   const context = await browserPage.context().browser().newContext();
   try {
     const page = await context.newPage();
-    const results = [], errors = [], speeds = [];
+    const results = [], errors = [];
     page.on("pageerror", error => errors.push(error.message));
     page.on("console", message => { if (message.type() === "error") errors.push(message.text()); });
     const check = (condition, name) => { if (!condition) throw new Error(name); results.push(name); };
@@ -16,6 +16,20 @@ async (browserPage) => {
       await page.setViewportSize({ width: Math.round(width * scale), height: Math.round(950 * scale) });
       await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
       check(Math.abs(await page.evaluate(() => innerWidth) - width) <= 1, `CSS viewport ${width}px`);
+    };
+    // The basket copy stays upright and still; the artwork shrinks only during a
+    // vertical drop, and only items starting below the basket fly a full loop.
+    const flightShape = () => {
+      const layer=document.querySelector(".clothing-flight-layer");
+      const item=layer.querySelector(".clothing-flight-item"), basket=layer.querySelector(".clothing-flight-basket");
+      const path=item.getAnimations()[0].effect.getKeyframes().map(f=>{const [x,y=0]=f.translate.split(" ").map(parseFloat);return {x,y,scale:Number(f.scale),rotate:parseFloat(f.rotate)};});
+      const last=path.at(-1), shrinking=path.filter(p=>p.scale<1);
+      const vertical=shrinking.length>2 && shrinking.every((p,i)=>Math.abs(p.x-last.x)<.05 && (i===0 || p.y>=shrinking[i-1].y));
+      const source=document.querySelector(".is-playing img").getBoundingClientRect(), b=basket.getBoundingClientRect();
+      const below=source.y+source.height/2>b.bottom;
+      const spin=Math.max(...path.map(p=>p.rotate))-Math.min(...path.map(p=>p.rotate));
+      const upright=[basket,layer.querySelector(".clothing-flight-rim"),document.querySelector(".hero-basket")].every(e=>getComputedStyle(e).rotate==="-90deg");
+      return {upright, still:basket.getAnimations().length===0, vertical, below, loops:below ? spin>=340 : spin<40};
     };
     await viewport(1440);
     check(await page.locator('.clothing-toy img').evaluateAll(images=>images.every(image=>image.complete && image.naturalWidth>0)), "All five sneaker and backpack illustrations load successfully");
@@ -37,36 +51,28 @@ async (browserPage) => {
         const layer = document.querySelector(".clothing-flight-layer");
         const item = layer.querySelector(".clothing-flight-item");
         const basket = layer.querySelector(".clothing-flight-basket");
-        const itemAnimation=item.getAnimations()[0], basketAnimation=basket.getAnimations()[0];
+        const itemAnimation=item.getAnimations()[0];
         const timing=itemAnimation.effect.getTiming();
-        const time=timing.delay+timing.duration*.995;
-        itemAnimation.currentTime=time;
-        basketAnimation.currentTime=time;
+        itemAnimation.currentTime=timing.delay+timing.duration*.995;
         const a=item.getBoundingClientRect(), b=basket.getBoundingClientRect();
-        const source=document.querySelector(".is-playing img").getBoundingClientRect();
-        const expectedAngle=Math.atan2(source.y+source.height/2-b.y-b.height/2,source.x+source.width/2-b.x-b.width/2)*180/Math.PI;
-        return {angle:parseFloat(getComputedStyle(basket).rotate), expectedAngle, distance:Math.hypot(a.x+a.width/2-b.x-b.width/2,a.y+a.height/2-b.y-b.height/2), size:a.width, basketSize:b.width};
+        return {distance:Math.hypot(a.x+a.width/2-b.x-b.width/2,a.y+a.height/2-b.y-b.height/2), size:a.width, basketSize:b.width};
       });
-      check(Math.abs(arrival.angle-arrival.expectedAngle)<.1 && arrival.distance < arrival.basketSize * .3 && arrival.size < arrival.basketSize * .3, `${id}: enters the basket facing the source`);
+      check(arrival.distance < arrival.basketSize * .3 && arrival.size < arrival.basketSize * .3, `${id}: enters the basket`);
+      const shape = await page.evaluate(flightShape);
+      check(shape.upright && shape.still, `${id}: basket stays upright and does not turn toward the item`);
+      check(shape.vertical, `${id}: drops into the basket strictly from above`);
+      check(shape.loops, `${id}: ${shape.below ? "flies one full loop before the drop" : "no loop when starting above the basket"}`);
       const presentation = await page.evaluate(() => {
         const layer=document.querySelector(".clothing-flight-layer");
         const item=layer.querySelector(".clothing-flight-item"), basket=layer.querySelector(".clothing-flight-basket");
-        const animation=basket.getAnimations()[0], frames=animation.effect.getKeyframes();
-        const duration=animation.effect.getTiming().duration;
-        const spinEnd=1, catchAngle=parseFloat(frames[1].rotate);
-        const from=frames[spinEnd-1].offset*duration, to=frames[spinEnd].offset*duration;
-        const angles=[.1,.3,.5,.7,.9].map(t=>{animation.currentTime=from+(to-from)*t;return parseFloat(getComputedStyle(basket).rotate);});
-        const constant=angles.slice(1).every((a,i)=>Math.abs(a-angles[i]-catchAngle*.2)<.1);
-        animation.currentTime=120;
-        const earlyRotation=parseFloat(getComputedStyle(basket).rotate);
         const itemFrames=item.getAnimations()[0].effect.getKeyframes();
         const path=itemFrames.map(f=>{const [x,y=0]=f.translate.split(" ").map(parseFloat);return [x,y];});
-        const last=path.at(-1);
-        const straight=path.every((p,i)=>Math.hypot(p[0]-last[0]*itemFrames[i].offset,p[1]-last[1]*itemFrames[i].offset)<.05);
         const timing=item.getAnimations()[0].effect.getTiming();
-        const pathLength=path.slice(1).reduce((sum,p,i)=>sum+Math.hypot(p[0]-path[i][0],p[1]-path[i][1]),0);
-        const speed=pathLength/timing.duration;
-        const fullSize=itemFrames.filter(f=>f.offset<=.5).every(f=>Number(f.scale)===1)
+        // Uniform speed along the route: equal time steps cover equal distances.
+        const steps=path.slice(1).map((p,i)=>Math.hypot(p[0]-path[i][0],p[1]-path[i][1]));
+        const mean=steps.reduce((sum,step)=>sum+step,0)/steps.length;
+        const uniform=steps.every(step=>Math.abs(step-mean)<mean*.05+.05);
+        const fullSize=itemFrames.filter(f=>f.offset<=.4).every(f=>Number(f.scale)===1)
           && Number(itemFrames.at(-2).scale)<.2;
         layer.getAnimations({subtree:true}).forEach(a=>a.currentTime=timing.delay+timing.duration*.45);
         const tails=[...layer.querySelectorAll(".clothing-comet-segment")];
@@ -81,25 +87,20 @@ async (browserPage) => {
         const glow=rim && Number(getComputedStyle(rim).opacity)>.7 && getComputedStyle(rim).clipPath!=="none";
         const tailScale=Number(getComputedStyle(tails[0]).scale);
         const shrunkTail=tailScale<.02 && Math.abs(tailScale-Number(getComputedStyle(item).scale))<.001;
-        layer.getAnimations({subtree:true}).forEach(a=>a.currentTime=timing.duration+300+999);
-        const held=Math.abs(parseFloat(getComputedStyle(basket).rotate)-catchAngle)<.1 && Number(getComputedStyle(rim).opacity)===0;
-        layer.getAnimations({subtree:true}).forEach(a=>a.currentTime=(frames[2].offset+1)/2*duration);
-        const returning=Math.abs(parseFloat(getComputedStyle(basket).rotate)-(catchAngle+parseFloat(frames.at(-1).rotate))/2)<.1;
-        return {shrunkTail,proportional,speed,fullSize,pause:held && returning,constant,early:Math.abs(earlyRotation-catchAngle*Math.min(1,120/to))<.1 && timing.delay===0,wide:base>=10 && shortTrail,glow,straight,tail};
+        layer.getAnimations({subtree:true}).forEach(a=>a.currentTime=timing.duration+300);
+        const faded=Number(getComputedStyle(rim).opacity)===0 && getComputedStyle(basket).rotate==="-90deg";
+        return {shrunkTail,proportional,duration:timing.duration,uniform,fullSize,faded,immediate:timing.delay===0,wide:base>=10 && shortTrail,glow,tail};
       });
-      check(presentation.constant, `${id}: basket turns toward the source at a constant angular speed`);
-      check(presentation.straight, `${id}: follows one straight line to the basket`);
       check(presentation.tail, `${id}: blue comet tail follows the flight`);
-      check(presentation.early, `${id}: basket rotation starts together with the flight`);
+      check(presentation.immediate, `${id}: flight starts without delay`);
       check(presentation.wide, `${id}: comet tail is short with a broad base`);
       check(presentation.proportional, `${id}: comet base scales with garment size`);
       check(presentation.shrunkTail, `${id}: tail shrinks together with garment at entry`);
       check(presentation.glow, `${id}: only the rim lights up at impact`);
       check(presentation.fullSize, `${id}: full size during travel, shrinking only before entry`);
-      check(presentation.pause, `${id}: basket waits one second after the rim fades before returning`);
-      const expectedSpeed = id === "sand-pair" ? .2 : .4;
-      check(Math.abs(presentation.speed-expectedSpeed)<.004, `${id}: travels at ${expectedSpeed*1000} CSS pixels per second`);
-      speeds.push(id === "sand-pair" ? presentation.speed*2 : presentation.speed);
+      check(presentation.faded, `${id}: rim glow fades with the basket still upright`);
+      check(presentation.duration===1500, `${id}: reaches the basket in 1.5 seconds`);
+      check(presentation.uniform, `${id}: moves at an even pace along its route`);
       const original = await page.locator(".hero-basket").boundingBox();
       await page.evaluate(() => document.querySelector(".clothing-flight-layer").getAnimations({subtree:true}).forEach(a=>a.finish()));
       if (id==='mint-pair') {
@@ -121,7 +122,6 @@ async (browserPage) => {
       check(!await garment(id).isVisible() && Math.abs(original.x-restored.x)<1 && Math.abs(original.y-restored.y)<1, `${id}: collected artwork stays hidden while basket returns`);
       check(await page.locator('.hero-basket').evaluate((basket,last)=>getComputedStyle(basket).opacity===(last?'0':'1'),id==='mint-pair'), `${id}: basket hides only after the last item`);
     }
-    check(Math.max(...speeds)-Math.min(...speeds)<.008, "Sand pair travels at half the speed of the other garments regardless of route length");
     check(!await page.locator('.clothing-hint').isVisible(), "Hint hides after all five garments are collected");
     await page.locator('#language').selectOption('ru');
     await viewport(1024);
@@ -235,6 +235,21 @@ async (browserPage) => {
         });
       });
       check(pairsFit, `New pairs fit without overlapping controls or illustrations at ${width}px`);
+      const cardsFit = await page.evaluate(()=>{
+        const overlap=(a,b)=>a.left<b.right && a.right>b.left && a.top<b.bottom && a.bottom>b.top;
+        const hero=document.querySelector('.hero').getBoundingClientRect();
+        const cards=[...document.querySelectorAll('.hero .floating-card')].filter(e=>e.getClientRects().length);
+        const others=[...document.querySelectorAll('.hero-brand-mark,.hero-basket,.hero .search-form,.hero .category-pills,.clothing-toy img')];
+        const fit=cards.every((a,i)=>{
+          const bounds=a.getBoundingClientRect();
+          return bounds.left>=hero.left && bounds.right<=hero.right && bounds.top>=hero.top && bounds.bottom<=hero.bottom
+            && [...cards.slice(i+1),...others].every(b=>!overlap(bounds,b.getBoundingClientRect()));
+        });
+        const sizes=cards.map(e=>getComputedStyle(e).width), tilts=cards.map(e=>getComputedStyle(e).rotate);
+        return {count:cards.length, fit, distinct:new Set(sizes).size===cards.length && new Set(tilts).size===cards.length, flush:Math.abs(document.documentElement.clientWidth-hero.right)<1};
+      });
+      check(cardsFit.fit && cardsFit.distinct && cardsFit.count===(width>1100 ? 7 : width>1000 ? 5 : 3), `${cardsFit.count} hero cards with distinct sizes and tilts fit without overlaps at ${width}px`);
+      check(cardsFit.flush, `Hero reaches the right edge at ${width}px`);
       for (const id of ["sneaker","backpack","high-top","sand-pair","mint-pair"]) {
         await garment(id).click();
         check(await page.locator('.clothing-flight-layer').count()===1, `${id}: flight starts at ${width}px: ${errors.join('; ')}`);
@@ -245,23 +260,17 @@ async (browserPage) => {
           const item=layer.querySelector(".clothing-flight-item").getBoundingClientRect();
           const hero=document.querySelector(".hero").getBoundingClientRect();
           const active=document.querySelector('[data-flight-state="active"]');
-          const source=active.querySelector("img").getBoundingClientRect();
-          const basket=layer.querySelector(".clothing-flight-basket").getBoundingClientRect();
-          const frames=layer.querySelector('.clothing-flight-item').getAnimations()[0].effect.getKeyframes();
-          const last=frames.at(-1).translate.split(" ").map(parseFloat);
-          const straight=frames.every(f=>{const [x,y=0]=f.translate.split(" ").map(parseFloat);return Math.hypot(x-last[0]*f.offset,y-last[1]*f.offset)<.05;});
           const sourceSize=Math.min(active.querySelector('img').offsetWidth,active.querySelector('img').offsetHeight);
           const tailBase=Math.max(...[...layer.querySelectorAll('.clothing-comet-segment')].map(t=>parseFloat(getComputedStyle(t).height)));
           const proportional=Math.abs(tailBase/sourceSize-.6)<.001;
-          layer.getAnimations({subtree:true}).forEach(a=>a.currentTime=timing.duration*.995);
-          const target=Math.atan2(source.y+source.height/2-basket.y-basket.height/2,source.x+source.width/2-basket.x-basket.width/2)*180/Math.PI;
-          const facing=Math.abs(parseFloat(getComputedStyle(layer.querySelector('.clothing-flight-basket')).rotate)-target)<.1;
-          return {facing,proportional,straight,fits:document.documentElement.scrollWidth<=innerWidth, inside:item.left>=hero.left && item.right<=hero.right && item.top>=hero.top && item.bottom<=hero.bottom};
+          return {duration:timing.duration,proportional,fits:document.documentElement.scrollWidth<=innerWidth, inside:item.left>=hero.left && item.right<=hero.right && item.top>=hero.top && item.bottom<=hero.bottom};
         });
-        check(geometry.fits && geometry.inside, `${id}: direct flight stays within hero at ${width}px`);
+        check(geometry.fits && geometry.inside, `${id}: flight stays within hero at ${width}px`);
         check(geometry.proportional, `${id}: proportional tail at ${width}px`);
-        check(geometry.facing, `${id}: basket faces the source before landing at ${width}px`);
-        check(geometry.straight, `${id}: straight trajectory at ${width}px`);
+        check(geometry.duration===1500, `${id}: 1.5 second flight at ${width}px`);
+        const shape = await page.evaluate(flightShape);
+        check(shape.upright && shape.still && shape.vertical, `${id}: upright basket, vertical drop at ${width}px`);
+        check(shape.loops, `${id}: loop only when starting below the basket at ${width}px`);
         await page.evaluate(() => document.querySelector(".clothing-flight-layer").getAnimations({subtree:true}).forEach(a=>a.finish()));
         await idle();
       }
