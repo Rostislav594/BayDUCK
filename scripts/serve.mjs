@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { readFile, stat } from "node:fs/promises";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { extname, resolve, sep } from "node:path";
 import { networkInterfaces } from "node:os";
 
@@ -16,7 +16,38 @@ const types = {
   ".jpg": "image/jpeg",
   ".svg": "image/svg+xml",
 };
+// The hero layout editor (/?edit-layout) saves here. Only on the private
+// 127.0.0.1 preview, never on the LAN one, and only small JSON documents.
+async function saveLayout(request, response) {
+  let body = "";
+  for await (const chunk of request) {
+    body += chunk;
+    if (body.length > 64 * 1024) return response.writeHead(413).end("Too large");
+  }
+  try {
+    const layout = JSON.parse(body);
+    if (!Array.isArray(layout.cards)) throw new Error("cards");
+    await mkdir(resolve(root, "artifacts"), { recursive: true });
+    const text = JSON.stringify(layout, null, 2);
+    // The latest layout plus a timestamped copy, so no save is ever lost.
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    await writeFile(resolve(root, "artifacts", "hero-layout.json"), text);
+    await writeFile(resolve(root, "artifacts", `hero-layout-${stamp}.json`), text);
+    response.writeHead(204).end();
+  } catch {
+    response.writeHead(400).end("Bad layout");
+  }
+}
 createServer(async (request, response) => {
+  if (request.url === "/__layout" && !lan) {
+    if (request.method === "POST") return saveLayout(request, response);
+    try {
+      const saved = await readFile(resolve(root, "artifacts", "hero-layout.json"));
+      return response.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-cache" }).end(saved);
+    } catch {
+      return response.writeHead(404).end("No layout yet");
+    }
+  }
   try {
     const pathname = decodeURIComponent(
       new URL(request.url, "http://localhost").pathname,

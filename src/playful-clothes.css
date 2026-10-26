@@ -271,6 +271,62 @@
     bottom: 8px;
   }
 }
+/* Owner-approved desktop positions from 1280px (see the matching block in
+   styles.css). Flights are planned from wherever the toys are. */
+@media (min-width: 1280px) {
+  .clothing-toy--sneaker,
+  .clothing-toy--backpack,
+  .clothing-toy--high-top,
+  .clothing-toy--sand-pair,
+  .clothing-toy--mint-pair {
+    right: auto;
+    bottom: auto;
+    translate: -50% 0;
+  }
+  .clothing-toy--sneaker {
+    left: 41.94%;
+    top: 430px;
+    rotate: -23deg;
+  }
+  /* A fixed ~90px gap from the category row it shares a height with. */
+  .clothing-toy--high-top {
+    left: calc(50% + 345px);
+    top: 357px;
+    rotate: -8deg;
+  }
+  /* The backpack keeps its 1912px place, but never closer than 20px to the
+     right edge of the tilted upper-right card (bounding box plus 20px). */
+  .clothing-toy--backpack {
+    left: max(
+      calc(50% + 260px + 0.6715 * (50% - 260px)),
+      calc(50% + 260px + 0.37 * (50% - 260px) + 0.563 * var(--hero-card-width) + 56px)
+    );
+    top: 24px;
+  }
+  .clothing-toy--sand-pair {
+    left: calc(0.243 * (50% - 260px));
+    top: 154px;
+    rotate: -17deg;
+  }
+  .clothing-toy--mint-pair {
+    left: 27.23%;
+    top: 359px;
+    rotate: 5deg;
+  }
+}
+@media (min-width: 1280px) and (max-width: 1439px) {
+  /* Narrower laptops: the high-top sits between the raised upper-right card and
+     the lower-right card, and the sand pair keeps clear of the upper-left card. */
+  .clothing-toy--high-top {
+    top: 318px;
+  }
+  .clothing-toy--sand-pair {
+    left: calc(0.2 * (50% - 260px));
+  }
+  .clothing-toy--sneaker {
+    top: 412px;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .clothing-toy img {
     transition: none;

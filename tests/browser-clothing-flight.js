@@ -218,7 +218,7 @@ async (browserPage) => {
     await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true})));
     check(await page.locator('.clothing-toy:visible').count()===5, "Browser back/forward cache restoration resets collected garments");
 
-    for (const width of [320,390,621,768,1024,1440]) {
+    for (const width of [320,390,621,768,1024,1280,1440,1912]) {
       await page.reload();
       await viewport(width);
       check(await page.locator('.hero-explore, .scroll-cue').count()===0, `Extra hero links are absent at ${width}px`);

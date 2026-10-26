@@ -640,6 +640,11 @@ main:focus {
   align-items: center;
   flex-direction: column;
   padding: 40px 0 19px;
+  /* Its tall padding lies over the product cards; only the pills take clicks. */
+  pointer-events: none;
+}
+.hero-bottom > * {
+  pointer-events: auto;
 }
 .category-pills {
   display: flex;
@@ -3199,6 +3204,70 @@ dialog::backdrop {
   }
   .auth-body {
     padding: 18px 16px 20px;
+  }
+}
+/* Owner-approved desktop layout (arranged at 1912px with /?edit-layout on
+   2026-10-26, saved in artifacts/hero-layout.json). Upper cards keep their share of
+   the gutter between the 520px logo column and the hero edge; the bottom row keeps
+   its share of the hero width. Sizes are multiples of the base card width. Below
+   1280px there is not enough room, so the previous arrangement stays there. */
+@media (min-width: 1280px) {
+  .hero .floating-card.floating-card {
+    right: auto;
+    bottom: auto;
+    translate: -50% 0;
+  }
+  .hero .float-one {
+    left: 11.37%;
+    top: 367px;
+    width: var(--hero-card-width);
+    rotate: -11deg;
+  }
+  .hero .float-two {
+    left: 86.91%;
+    top: 433px;
+    width: calc(var(--hero-card-width) * 0.862);
+    rotate: 12deg;
+  }
+  .hero .float-three {
+    left: 52.79%;
+    top: 456px;
+    width: calc(var(--hero-card-width) * 0.791);
+    rotate: -4deg;
+  }
+  .hero .float-four {
+    left: calc(0.646 * (50% - 260px));
+    top: 63px;
+    width: calc(var(--hero-card-width) * 0.898);
+    rotate: 8deg;
+  }
+  .hero .float-five {
+    left: calc(50% + 260px + 0.37 * (50% - 260px));
+    top: 82px;
+    width: calc(var(--hero-card-width) * 0.929);
+    rotate: -14deg;
+  }
+  .hero .float-six {
+    left: 30.32%;
+    top: 511px;
+    width: calc(var(--hero-card-width) * 0.883);
+    rotate: -7deg;
+  }
+  .hero .float-seven {
+    left: 70.5%;
+    top: 537px;
+    width: calc(var(--hero-card-width) * 0.719);
+    rotate: 22deg;
+  }
+  .hero .float-six > span,
+  .hero .float-four > span {
+    font-size: 12px;
+  }
+}
+@media (min-width: 1280px) and (max-width: 1439px) {
+  /* Room for the high-top toy below it on narrower laptops. */
+  .hero .float-five {
+    top: 56px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

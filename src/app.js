@@ -674,3 +674,5 @@ window.addEventListener("hashchange", () => {
 });
 render();
 track("page_view", { page: route().page });
+// Owner-only layout editor for the hero cards: http://127.0.0.1:5173/?edit-layout#home
+if (new URLSearchParams(location.search).has("edit-layout")) import("./layout-editor.js");
