@@ -1,9 +1,9 @@
 {
-  "name": "bayduck",
+  "name": "buyduck",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "BayDUCK — Ukrainian footwear and streetwear store prototype",
+  "description": "BuyDUCK — Ukrainian footwear and streetwear store prototype",
   "scripts": {
     "dev": "node scripts/serve.mjs",
     "dev:lan": "node scripts/serve.mjs --lan",

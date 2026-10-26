@@ -1,5 +1,5 @@
 @font-face {
-  font-family: BayduckSans;
+  font-family: BuyduckSans;
   src: local("Inter"), local("Segoe UI");
   font-style: normal;
   font-weight: 100 900;
@@ -17,7 +17,7 @@
   --shadow: 0 4px 6px -1px #00000014, 0 2px 4px -2px #00000014;
   --space-section: 80px;
   --font:
-    BayduckSans, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    BuyduckSans, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
 }
 * {

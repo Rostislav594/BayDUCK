@@ -20,7 +20,11 @@ const escape = (value) =>
   );
 function readSaved(key, fallback) {
   try {
-    return JSON.parse(localStorage.getItem(`bayduck:${key}`)) ?? fallback;
+    // Fall back to the pre-rename prefix so saved carts and favorites survive.
+    const raw =
+      localStorage.getItem(`buyduck:${key}`) ??
+      localStorage.getItem(`bayduck:${key}`);
+    return JSON.parse(raw) ?? fallback;
   } catch {
     return fallback;
   }
@@ -75,7 +79,7 @@ const iconButton = (name, action, label, extra = "") =>
 
 function save(key) {
   try {
-    localStorage.setItem(`bayduck:${key}`, JSON.stringify(state[key]));
+    localStorage.setItem(`buyduck:${key}`, JSON.stringify(state[key]));
   } catch {
     toast(t("storageNotice"));
   }

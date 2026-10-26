@@ -19,23 +19,23 @@
 | Телефон | `[рабочий телефон, +380…]` |
 | Аккаунт OLX | `[email или ссылка на профиль продавца]` |
 | Примерное число активных объявлений | `[N]` |
-| Сайт магазина | `[домен BayDUCK — когда появится]` |
+| Сайт магазина | `[домен BuyDUCK — когда появится]` |
 | Redirect URL для OAuth | `[https://<домен>/olx/callback — после выбора хостинга]` |
 
 ## Текст заявки (українською)
 
-**Назва застосунку:** BayDUCK OLX Sync
+**Назва застосунку:** BuyDUCK OLX Sync
 
 **Короткий опис:**
-BayDUCK — інтернет-магазин взуття, одягу та аксесуарів `[назва ФОП / компанії]`, який уже продає товари на OLX. Ми розробляємо власну систему обліку товарів (CRM) для магазину BayDUCK і хочемо синхронізувати її з нашим акаунтом продавця на OLX.
+BuyDUCK — інтернет-магазин взуття, одягу та аксесуарів `[назва ФОП / компанії]`, який уже продає товари на OLX. Ми розробляємо власну систему обліку товарів (CRM) для магазину BuyDUCK і хочемо синхронізувати її з нашим акаунтом продавця на OLX.
 
 **Як буде використовуватися API:**
-- імпорт наших активних оголошень з OLX до каталогу BayDUCK, щоб не дублювати введення товарів вручну;
-- створення нових оголошень на OLX із системи BayDUCK (назва, опис, ціна в UAH, фото, категорія та обов'язкові атрибути — розмір, бренд, стан);
+- імпорт наших активних оголошень з OLX до каталогу BuyDUCK, щоб не дублювати введення товарів вручну;
+- створення нових оголошень на OLX із системи BuyDUCK (назва, опис, ціна в UAH, фото, категорія та обов'язкові атрибути — розмір, бренд, стан);
 - оновлення ціни, опису та фото, деактивація проданих товарів і повторна активація;
 - робота лише з оголошеннями власного акаунта, який авторизує застосунок через OAuth. Дані інших продавців і ринку не збираємо та не використовуємо.
 
-**Користувачі застосунку:** лише працівники магазину BayDUCK `[кількість]`. Застосунок не надається третім особам.
+**Користувачі застосунку:** лише працівники магазину BuyDUCK `[кількість]`. Застосунок не надається третім особам.
 
 **Обсяг:** близько `[N]` активних оголошень, `[N]` нових на тиждень.
 
@@ -45,18 +45,18 @@ BayDUCK — інтернет-магазин взуття, одягу та акс
 
 ## Application text (English, if the form is in English)
 
-**Application name:** BayDUCK OLX Sync
+**Application name:** BuyDUCK OLX Sync
 
 **Description:**
-BayDUCK is an online store for footwear, clothing and accessories run by `[company / sole proprietor]`, which already sells on OLX Ukraine. We are building our own inventory management system (CRM) for the BayDUCK store and want to synchronise it with our OLX seller account.
+BuyDUCK is an online store for footwear, clothing and accessories run by `[company / sole proprietor]`, which already sells on OLX Ukraine. We are building our own inventory management system (CRM) for the BuyDUCK store and want to synchronise it with our OLX seller account.
 
 **Intended API use:**
-- import our own active OLX adverts into the BayDUCK catalogue to avoid manual double entry;
-- create new OLX adverts from BayDUCK (title, description, price in UAH, photos, category and required attributes such as size, brand and condition);
+- import our own active OLX adverts into the BuyDUCK catalogue to avoid manual double entry;
+- create new OLX adverts from BuyDUCK (title, description, price in UAH, photos, category and required attributes such as size, brand and condition);
 - update price, description and photos, deactivate sold items and reactivate them;
 - access only the adverts of our own account that authorises the application via OAuth. We do not collect or use data of other sellers or the market.
 
-**Users:** BayDUCK store staff only (`[number]`). The application is not offered to third parties.
+**Users:** BuyDUCK store staff only (`[number]`). The application is not offered to third parties.
 
 **Volume:** about `[N]` active adverts, `[N]` new adverts per week.
 

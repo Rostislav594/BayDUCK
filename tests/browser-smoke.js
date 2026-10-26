@@ -7,7 +7,7 @@ async (page) => {
   const check = (condition, name) => { if (!condition) throw new Error(name); results.push(name); };
   const count = async expected => page.waitForFunction(n => document.querySelectorAll('.product-card').length === n, expected);
   await page.goto('http://127.0.0.1:5173');
-  await page.evaluate(() => { for (const key of Object.keys(localStorage)) if (key.startsWith('bayduck:')) localStorage.removeItem(key); });
+  await page.evaluate(() => { for (const key of Object.keys(localStorage)) if (key.startsWith('buyduck:') || key.startsWith('bayduck:')) localStorage.removeItem(key); });
   await page.reload();
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 1440, height: 1000 });
