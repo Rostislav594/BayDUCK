@@ -9,6 +9,9 @@ import {
   addToCart,
 } from "./model.js";
 import { track } from "./analytics.js";
+import { createAccountStore } from "./accounts.js";
+
+const accounts = createAccountStore();
 
 const $ = (selector) => document.querySelector(selector);
 const escape = (value) =>
@@ -42,6 +45,11 @@ const state = {
   size: null,
   cartStep: "cart",
   menu: false,
+  account: accounts.current(),
+  authView: "signin",
+  // Where to continue after signing in from the checkout ("checkout") or elsewhere.
+  authReturn: null,
+  lastOrder: null,
 };
 const t = (key) => dictionaries[state.language][key] || key;
 const money = (value) =>
@@ -72,6 +80,8 @@ const paths = {
   pin: '<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>',
   spark: '<path d="m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7Z"/>',
   down: '<path d="M12 3v17m-5-5 5 5 5-5"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
 };
 const icon = (name, cls = "") =>
   `<svg class="icon ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.arrow}</svg>`;
@@ -99,7 +109,7 @@ function route() {
   const [page = "", query = ""] = location.hash.slice(1).split("?");
   const params = new URLSearchParams(query);
   return {
-    page: ["catalog", "favorites"].includes(page) ? page : "home",
+    page: ["catalog", "favorites", "account"].includes(page) ? page : "home",
     category: ["sneakers", "clothing", "accessories"].includes(
       params.get("category"),
     )
@@ -151,7 +161,7 @@ function categoryPills(current = "all", home = false) {
 }
 function header() {
   const r = route();
-  return `<aside class="sidebar" aria-label="${t("menu")}"><a class="rail-brand" href="#home" aria-label="BuyDUCK — ${t("home")}">B<span>•</span></a><div class="rail-links"><a href="#home" class="rail-item ${r.page === "home" ? "active" : ""}" aria-label="${t("home")}">${icon("home")}</a><a href="#catalog" class="rail-item ${r.page === "catalog" ? "active" : ""}" aria-label="${t("catalog")}">${icon("grid")}</a><a href="#favorites" class="rail-item ${r.page === "favorites" ? "active" : ""}" aria-label="${t("favorites")}">${icon("heart")}</a><button class="rail-item" data-action="cart" aria-label="${t("cart")}">${icon("bag")}</button></div><span class="rail-bottom">UA</span></aside><p class="demo-banner" role="note"><span class="demo-badge">${t("demoBadge")}</span><span>${t("demoNotice")}</span></p><div class="announcement"><span>${t("announcement")}</span><span>${t("deliveryTop")} ${icon("arrow")}</span></div><header class="header ${r.page === "home" ? "header--home" : ""}">${r.page === "home" ? "" : `<a href="#home" class="brand" aria-label="BuyDUCK — ${t("home")}"><img src="assets/branding/buyduck-wordmark-mascot-v3.png" alt="BuyDUCK" width="1875" height="839" /></a>`}<nav class="desktop-nav" aria-label="${t("catalog")}"><a href="#catalog?gender=women">${t("women")}</a><a href="#catalog?gender=men">${t("men")}</a><a href="#catalog?category=clothing">${t("clothing")}</a><a href="#catalog?category=accessories">${t("accessories")}</a><a href="#catalog?sale=1">${t("sale")}</a></nav><div class="header-actions"><label class="language-control">${icon("globe")}<select id="language" aria-label="${t("language")}">${[
+  return `<aside class="sidebar" aria-label="${t("menu")}"><a class="rail-brand" href="#home" aria-label="BuyDUCK — ${t("home")}">B<span>•</span></a><div class="rail-links"><a href="#home" class="rail-item ${r.page === "home" ? "active" : ""}" aria-label="${t("home")}">${icon("home")}</a><a href="#catalog" class="rail-item ${r.page === "catalog" ? "active" : ""}" aria-label="${t("catalog")}">${icon("grid")}</a><a href="#favorites" class="rail-item ${r.page === "favorites" ? "active" : ""}" aria-label="${t("favorites")}">${icon("heart")}</a>${accountLink("rail-item", r.page === "account")}<button class="rail-item" data-action="cart" aria-label="${t("cart")}">${icon("bag")}</button></div><span class="rail-bottom">UA</span></aside><p class="demo-banner" role="note"><span class="demo-badge">${t("demoBadge")}</span><span>${t("demoNotice")}</span></p><div class="announcement"><span>${t("announcement")}</span><span>${t("deliveryTop")} ${icon("arrow")}</span></div><header class="header ${r.page === "home" ? "header--home" : ""}">${r.page === "home" ? "" : `<a href="#home" class="brand" aria-label="BuyDUCK — ${t("home")}"><img src="assets/branding/buyduck-wordmark-mascot-v3.png" alt="BuyDUCK" width="1875" height="839" /></a>`}<nav class="desktop-nav" aria-label="${t("catalog")}"><a href="#catalog?gender=women">${t("women")}</a><a href="#catalog?gender=men">${t("men")}</a><a href="#catalog?category=clothing">${t("clothing")}</a><a href="#catalog?category=accessories">${t("accessories")}</a><a href="#catalog?sale=1">${t("sale")}</a></nav><div class="header-actions"><label class="language-control">${icon("globe")}<select id="language" aria-label="${t("language")}">${[
     ["uk", "UA"],
     ["ru", "RU"],
     ["en", "EN"],
@@ -162,7 +172,13 @@ function header() {
     )
     .join(
       "",
-    )}</select></label><a href="#favorites" class="icon-button header-heart" aria-label="${t("favorites")}">${icon("heart")}${state.favorites.length ? `<span class="count-dot">${state.favorites.length}</span>` : ""}</a><button class="cart-trigger" data-action="cart" aria-label="${t("cart")}">${icon("bag")}<span class="cart-label">${t("cart")}</span><span class="cart-count">${cartCount(state.cart)}</span></button><button class="icon-button menu-toggle" data-action="menu" aria-expanded="${state.menu}" aria-label="${t("menu")}">${icon(state.menu ? "close" : "menu")}</button></div></header>${state.menu ? `<nav class="mobile-nav" aria-label="${t("catalog")}"><a href="#catalog">${t("catalog")}</a><a href="#catalog?gender=women">${t("women")}</a><a href="#catalog?gender=men">${t("men")}</a><a href="#catalog?category=clothing">${t("clothing")}</a><a href="#catalog?category=accessories">${t("accessories")}</a><a href="#catalog?sale=1">${t("sale")}</a><a href="#favorites">${t("favorites")}</a></nav>` : ""}`;
+    )}</select></label><a href="#favorites" class="icon-button header-heart" aria-label="${t("favorites")}">${icon("heart")}${state.favorites.length ? `<span class="count-dot">${state.favorites.length}</span>` : ""}</a>${accountLink("icon-button header-account", r.page === "account")}<button class="cart-trigger" data-action="cart" aria-label="${t("cart")}">${icon("bag")}<span class="cart-label">${t("cart")}</span><span class="cart-count">${cartCount(state.cart)}</span></button><button class="icon-button menu-toggle" data-action="menu" aria-expanded="${state.menu}" aria-label="${t("menu")}">${icon(state.menu ? "close" : "menu")}</button></div></header>${state.menu ? `<nav class="mobile-nav" aria-label="${t("catalog")}"><a href="#catalog">${t("catalog")}</a><a href="#catalog?gender=women">${t("women")}</a><a href="#catalog?gender=men">${t("men")}</a><a href="#catalog?category=clothing">${t("clothing")}</a><a href="#catalog?category=accessories">${t("accessories")}</a><a href="#catalog?sale=1">${t("sale")}</a><a href="#favorites">${t("favorites")}</a>${state.account ? `<a href="#account">${t("account")}</a>` : `<button type="button" data-action="auth">${t("signIn")}</button>`}</nav>` : ""}`;
+}
+// Signed-in customers go to their account page; guests open the sign-in dialog.
+function accountLink(cls, active) {
+  return state.account
+    ? `<a href="#account" class="${cls} ${active ? "active" : ""} is-signed-in" aria-label="${escape(t("account"))}: ${escape(state.account.name)}">${icon("user")}</a>`
+    : `<button type="button" class="${cls}" data-action="auth" aria-label="${escape(t("signIn"))}">${icon("user")}</button>`;
 }
 function floatingCard(product, cls, label) {
   return `<button class="floating-card ${cls}" data-action="product" data-id="${product.id}"><img src="${photo(product)}" alt="${escape(product.name)}" width="400" height="400"/><span><span>${label || product.name}</span>${icon("arrow")}</span></button>`;
@@ -208,6 +224,33 @@ function catalog() {
               : t("catalogTitle");
   return `<main id="main" class="catalog-page content-wrap" tabindex="-1"><div class="breadcrumbs"><a href="#home">${t("home")}</a>${icon("chevron")}<span>${title}</span></div><div class="catalog-intro"><div><p class="eyebrow">${t("rotationLabel")}</p><h1>${title}</h1><p>${r.query ? `“${escape(r.query)}”` : t("catalogCopy")}</p></div>${searchForm(r.query, true)}</div><div class="catalog-toolbar">${categoryPills(r.category)}<label class="sort-control"><span class="sr-only">${t("sort")}</span><select id="sort">${["featured", "priceAsc", "priceDesc"].map((key, i) => `<option value="${["featured", "price-asc", "price-desc"][i]}" ${r.sort === ["featured", "price-asc", "price-desc"][i] ? "selected" : ""}>${t(key)}</option>`).join("")}</select></label></div><div class="result-info"><span>${visible.length} ${t({ one: "countOne", few: "countFew" }[new Intl.PluralRules(state.language).select(visible.length)] || "count")}</span>${r.query || r.sale || r.gender !== "all" || r.category !== "all" ? `<button class="subtle-button" data-action="reset">${t("reset")} ${icon("close")}</button>` : ""}</div>${visible.length ? `<div class="product-grid">${visible.map(productCard).join("")}</div>` : `<div class="empty-state">${icon(r.page === "favorites" ? "heart" : "search")}<h2>${t("emptyTitle")}</h2><p>${t(r.page === "favorites" ? "emptyFavorites" : "emptyCopy")}</p><a href="#catalog" class="button dark">${t("backCatalog")} ${icon("arrow")}</a></div>`}</main>`;
 }
+const field = (name, label, attrs = "", value = "") =>
+  `<label class="form-field">${label}<input name="${name}" value="${escape(value)}" ${attrs} /></label>`;
+const passwordField = (name, label, autocomplete, hint = "") =>
+  `<label class="form-field">${label}<span class="password-input"><input name="${name}" type="password" autocomplete="${autocomplete}" required maxlength="128" ${hint ? `aria-describedby="${name}-hint"` : ""} /><button type="button" class="password-toggle" data-action="toggle-password" aria-pressed="false" aria-label="${escape(t("showPassword"))}">${icon("eye")}</button></span>${hint ? `<small id="${name}-hint">${hint}</small>` : ""}</label>`;
+const formError = () => `<p class="form-error" role="alert" hidden></p>`;
+const shortDate = (time) =>
+  new Intl.DateTimeFormat({ uk: "uk-UA", ru: "ru-UA", en: "en-GB" }[state.language], { day: "numeric", month: "long", year: "numeric" }).format(time);
+
+function orderCard(order) {
+  const rows = order.items
+    .map((item) => {
+      const p = productById(item.id);
+      return `<li>${p ? `<img src="${photo(p)}" alt="" width="56" height="56" loading="lazy"/>` : ""}<span><strong>${escape(p ? p.name : item.id)}</strong><small>${t("sizeLabel")}: ${escape(item.size)} · ${item.quantity} ${t("qtyShort")}</small></span><span>${money(item.price * item.quantity)}</span></li>`;
+    })
+    .join("");
+  return `<article class="order-card"><header><div><h3>${t("orderNumber")} ${escape(order.number)}</h3><p>${shortDate(order.createdAt)}</p></div><span class="order-status">${t("orderDemoStatus")}</span></header><ul>${rows}</ul><footer><span>${t("orderDelivery")}: ${escape([order.delivery.city, order.delivery.branch].filter(Boolean).join(", "))}</span><strong>${money(order.total)}</strong></footer></article>`;
+}
+function account() {
+  const a = state.account;
+  const crumbs = `<div class="breadcrumbs"><a href="#home">${t("home")}</a>${icon("chevron")}<span>${t("account")}</span></div>`;
+  if (!a)
+    return `<main id="main" class="account-page content-wrap" tabindex="-1">${crumbs}<div class="empty-state account-empty">${icon("user")}<h1>${t("accountSignedOutTitle")}</h1><p>${t("accountSignedOutCopy")}</p><div class="account-empty-actions"><button type="button" class="button dark" data-action="auth">${t("signIn")} ${icon("arrow")}</button><button type="button" class="button outline" data-action="auth" data-view="signup">${t("signUp")}</button></div></div></main>`;
+  const orders = a.orders.length
+    ? `<div class="order-list">${a.orders.map(orderCard).join("")}</div>`
+    : `<div class="empty-state account-orders-empty">${icon("bag")}<h3>${t("noOrders")}</h3><p>${t("noOrdersCopy")}</p><a href="#catalog" class="button dark">${t("backCatalog")} ${icon("arrow")}</a></div>`;
+  return `<main id="main" class="account-page content-wrap" tabindex="-1">${crumbs}<div class="account-intro"><div><p class="eyebrow">${t("account")}</p><h1>${t("accountHello")}, ${escape(a.name)}</h1><p>${escape(a.email)} · ${t("memberSince")} ${shortDate(a.createdAt)}</p></div><button type="button" class="button outline" data-action="sign-out">${t("signOut")}</button></div><p class="account-demo-note">${t("authDemoNote")}</p><div class="account-grid"><section class="account-card account-orders" aria-labelledby="orders-title"><h2 id="orders-title">${t("ordersTitle")}</h2>${orders}</section><div class="account-side"><section class="account-card" aria-labelledby="profile-title"><h2 id="profile-title">${t("profileTitle")}</h2><p>${t("profileCopy")}</p><form id="profile-form" class="account-form" novalidate>${field("name", t("name"), 'autocomplete="name" required minlength="2" maxlength="80"', a.name)}${field("phone", t("phone"), 'type="tel" autocomplete="tel" inputmode="tel" maxlength="20" placeholder="+380"', a.phone)}${field("city", t("city"), 'autocomplete="address-level2" maxlength="80"', a.city)}${field("branch", t("branch"), 'maxlength="120"', a.branch)}${formError()}<button class="button dark" type="submit">${t("saveChanges")}</button></form></section><section class="account-card" aria-labelledby="security-title"><h2 id="security-title">${t("securityTitle")}</h2><form id="password-form" class="account-form" novalidate><input type="email" name="username" autocomplete="username" value="${escape(a.email)}" hidden />${passwordField("current", t("currentPassword"), "current-password")}${passwordField("next", t("newPassword"), "new-password", t("passwordHint"))}${formError()}<button class="button dark" type="submit">${t("changePassword")}</button></form><details class="account-danger"><summary>${t("deleteAccount")}</summary><form id="delete-form" class="account-form" novalidate><p>${t("deleteAccountCopy")}</p><input type="email" name="username" autocomplete="username" value="${escape(a.email)}" hidden />${passwordField("password", t("password"), "current-password")}${formError()}<button class="button danger" type="submit">${t("deleteConfirm")}</button></form></details></section></div></div></main>`;
+}
 function footer() {
   return `<footer class="footer"><div class="footer-top"><div class="footer-brand"><a href="#home">BuyDUCK</a><p>${t("footerCopy")}</p></div><div><h3>${t("help")}</h3><button data-action="info" data-topic="delivery">${t("delivery")}</button><button data-action="info" data-topic="returns">${t("returns")}</button><button data-action="info" data-topic="about">${t("about")}</button></div><a href="#catalog" class="footer-cta">${t("explore")}${icon("arrow")}</a></div><div class="footer-bottom"><span>© ${new Date().getFullYear()} BuyDUCK. ${t("rights")}</span><p>${t("prototype")}</p><span>${t("footerMotto")} ↗</span></div></footer>`;
 }
@@ -221,7 +264,7 @@ function render() {
   document.title = t("pageTitle");
   $(".skip-link").textContent = t("skip");
   $("#app").innerHTML =
-    `${header()}${route().page === "home" ? home() : catalog()}${footer()}`;
+    `${header()}${page === "home" ? home() : page === "account" ? account() : catalog()}${footer()}`;
   syncClothingState();
 }
 function showDialog(dialog) {
@@ -251,10 +294,15 @@ function renderCart() {
   const dialog = $("#cart-dialog");
   dialog.setAttribute("aria-label", t("cart"));
   let content;
+  const a = state.account;
   if (state.cartStep === "success")
-    content = `<div class="empty-state success-state">${icon("check")}<h2>${t("successTitle")}</h2><p>${t("successCopy")}</p><button class="button dark" data-action="close">${t("continueShopping")} ${icon("arrow")}</button></div>`;
-  else if (state.cartStep === "checkout" && state.cart.length)
-    content = `<button class="subtle-button back-button" data-action="cart-back">← ${t("back")}</button><div class="checkout-intro"><h2>${t("checkoutTitle")}</h2><p>${t("checkoutCopy")}</p></div><form id="checkout-form"><label>${t("name")}<input name="name" autocomplete="given-name" required minlength="2" maxlength="80" /></label><label>${t("phone")}<input name="phone" type="tel" autocomplete="tel" inputmode="tel" required minlength="9" maxlength="20" placeholder="+380" /></label><label>${t("city")}<input name="city" autocomplete="address-level2" required minlength="2" maxlength="80" /></label><label>${t("branch")}<input name="branch" required maxlength="120" /></label><div class="cart-total"><span>${t("total")}</span><strong>${money(cartTotal(state.cart))}</strong></div><button class="button dark" type="submit">${t("submitOrder")} ${icon("arrow")}</button></form>`;
+    content = `<div class="empty-state success-state">${icon("check")}<h2>${t("successTitle")}</h2>${state.lastOrder ? `<p><strong>${t("orderNumber")} ${escape(state.lastOrder)}</strong></p><p>${t("orderSavedCopy")}</p><a href="#account" class="button outline" data-action="close">${t("ordersTitle")} ${icon("arrow")}</a>` : `<p>${t("successCopy")}</p>`}<button class="button dark" data-action="close">${t("continueShopping")} ${icon("arrow")}</button></div>`;
+  else if (state.cartStep === "checkout" && state.cart.length) {
+    const who = a
+      ? `<p class="checkout-account">${icon("user")}<span>${t("checkoutSignedIn")} <strong>${escape(a.email)}</strong></span></p>`
+      : `<div class="quick-buy"><strong>${t("quickBuyTitle")}</strong><p><button type="button" class="text-button" data-action="auth" data-return="checkout">${t("signIn")}</button>, ${t("quickBuyCopy")}</p></div>`;
+    content = `<button class="subtle-button back-button" data-action="cart-back">← ${t("back")}</button><div class="checkout-intro"><h2>${t("checkoutTitle")}</h2><p>${t("checkoutCopy")}</p>${who}</div><form id="checkout-form"><label>${t("name")}<input name="name" autocomplete="given-name" required minlength="2" maxlength="80" value="${escape(a?.name || "")}" /></label><label>${t("phone")}<input name="phone" type="tel" autocomplete="tel" inputmode="tel" required minlength="9" maxlength="20" placeholder="+380" value="${escape(a?.phone || "")}" /></label><label>${t("city")}<input name="city" autocomplete="address-level2" required minlength="2" maxlength="80" value="${escape(a?.city || "")}" /></label><label>${t("branch")}<input name="branch" required maxlength="120" value="${escape(a?.branch || "")}" /></label>${a ? `<label class="check-field"><input type="checkbox" name="saveProfile" checked />${t("saveToProfile")}</label>` : ""}<div class="cart-total"><span>${t("total")}</span><strong>${money(cartTotal(state.cart))}</strong></div><button class="button dark" type="submit">${t("submitOrder")} ${icon("arrow")}</button></form>`;
+  }
   else if (!state.cart.length)
     content = `<div class="empty-state">${icon("bag")}<h2>${t("emptyCart")}</h2><p>${t("emptyCartCopy")}</p><button class="button dark" data-action="shop">${t("backCatalog")} ${icon("arrow")}</button></div>`;
   else
@@ -267,6 +315,66 @@ function renderCart() {
         "",
       )}</div><div class="cart-summary"><div class="cart-total"><span>${t("total")}</span><strong>${money(cartTotal(state.cart))}</strong></div><button class="button dark" data-action="checkout">${t("checkout")} ${icon("arrow")}</button><p class="product-note">${t("checkoutCopy")}</p></div>`;
   dialog.innerHTML = `<div class="dialog-header"><h2>${t("cart")} <span class="cart-count">${cartCount(state.cart)}</span></h2>${iconButton("close", "close", t("close"))}</div>${content}`;
+}
+function renderAuth() {
+  const dialog = $("#auth-dialog");
+  const view = state.authView;
+  const title = t({ signin: "signInTitle", signup: "signUpTitle", forgot: "forgotTitle" }[view]);
+  dialog.setAttribute("aria-label", title);
+  const remember = `<label class="check-field"><input type="checkbox" name="remember" checked />${t("rememberMe")}</label>`;
+  const email = field("email", t("email"), 'type="email" autocomplete="email" inputmode="email" required maxlength="120"');
+  let body;
+  if (view === "signup")
+    body = `<form id="signup-form" class="account-form" novalidate>${field("name", t("name"), 'autocomplete="name" required minlength="2" maxlength="80"')}${email}${passwordField("password", t("password"), "new-password", t("passwordHint"))}${remember}${formError()}<button class="button dark" type="submit">${t("signUp")} ${icon("arrow")}</button></form><p class="auth-switch">${t("haveAccount")} <button type="button" class="text-button" data-action="auth-view" data-view="signin">${t("signIn")}</button></p>`;
+  else if (view === "forgot")
+    body = `<form id="forgot-form" class="account-form" novalidate><p>${t("forgotCopy")}</p>${email}<p class="form-success" role="status" hidden>${t("forgotSent")}</p>${formError()}<button class="button dark" type="submit">${t("sendResetLink")}</button></form><p class="auth-switch"><button type="button" class="text-button" data-action="auth-view" data-view="signin">← ${t("backToSignIn")}</button></p>`;
+  else
+    body = `<form id="signin-form" class="account-form" novalidate>${email}${passwordField("password", t("password"), "current-password")}<div class="auth-row">${remember}<button type="button" class="text-button" data-action="auth-view" data-view="forgot">${t("forgotPassword")}</button></div>${formError()}<button class="button dark" type="submit">${t("signIn")} ${icon("arrow")}</button></form><p class="auth-switch">${t("noAccount")} <button type="button" class="text-button" data-action="auth-view" data-view="signup">${t("signUp")}</button></p>`;
+  dialog.innerHTML = `<div class="dialog-header"><h2>${title}</h2>${iconButton("close", "close", t("close"))}</div><div class="auth-body">${body}<p class="auth-note">${t("authDemoNote")}</p></div>`;
+}
+function openAuth(view = "signin", returnTo = null) {
+  state.authView = view;
+  state.authReturn = returnTo;
+  renderAuth();
+  showDialog($("#auth-dialog"));
+  $("#auth-dialog input:not([type=checkbox])")?.focus();
+}
+function showFormError(form, key) {
+  const error = form.querySelector(".form-error");
+  error.textContent = t("err" + key[0].toUpperCase() + key.slice(1));
+  error.hidden = false;
+  form.querySelector("input:not([type=hidden]):not([type=checkbox])")?.focus();
+}
+// Hashing a password takes a moment; block double submits meanwhile.
+async function busy(form, task) {
+  const button = form.querySelector('[type="submit"]');
+  if (button.disabled) return;
+  button.disabled = true;
+  form.setAttribute("aria-busy", "true");
+  try {
+    return await task();
+  } finally {
+    button.disabled = false;
+    form.removeAttribute("aria-busy");
+  }
+}
+function signedIn(result, message) {
+  state.account = result.account;
+  closeDialog($("#auth-dialog"));
+  render();
+  toast(t(message));
+  if (state.authReturn === "checkout" && state.cart.length) {
+    state.cartStep = "checkout";
+    renderCart();
+    $("#checkout-form input").focus();
+  } else if (route().page === "account") $("#main").focus();
+}
+function refreshAccount(message) {
+  state.account = accounts.current();
+  const scroll = window.scrollY;
+  render();
+  window.scrollTo(0, scroll);
+  if (message) toast(t(message));
 }
 function openCart() {
   state.cartStep = "cart";
@@ -377,6 +485,29 @@ document.addEventListener("click", (event) => {
     location.hash = "catalog";
   }
   if (action === "info") info(button.dataset.topic);
+  if (action === "auth") {
+    state.menu = false;
+    openAuth(button.dataset.view || "signin", button.dataset.return || null);
+  }
+  if (action === "auth-view") {
+    state.authView = button.dataset.view;
+    renderAuth();
+    $("#auth-dialog input:not([type=checkbox])")?.focus();
+  }
+  if (action === "toggle-password") {
+    const input = button.previousElementSibling;
+    const show = input.type === "password";
+    input.type = show ? "text" : "password";
+    button.setAttribute("aria-pressed", String(show));
+    button.setAttribute("aria-label", t(show ? "hidePassword" : "showPassword"));
+  }
+  if (action === "sign-out") {
+    accounts.signOut();
+    state.account = null;
+    render();
+    toast(t("signedOut"));
+    $("#main").focus();
+  }
 });
 document.addEventListener("submit", (event) => {
   if (event.target.matches(".search-form")) {
@@ -398,9 +529,83 @@ document.addEventListener("submit", (event) => {
       total: cartTotal(state.cart),
       items: state.cart.map(({ id, quantity }) => ({ id, quantity })),
     });
+    // Guests buy without an account and nothing personal is saved. Signed-in
+    // customers keep the order (and, if they choose, the delivery details).
+    state.lastOrder = null;
+    if (state.account) {
+      const data = Object.fromEntries(new FormData(event.target));
+      if (data.saveProfile) accounts.updateProfile(state.account.id, data);
+      const result = accounts.addOrder(state.account.id, {
+        items: state.cart.map((item) => ({ ...item, price: productById(item.id).price })),
+        total: cartTotal(state.cart),
+        delivery: data,
+      });
+      if (result.ok) state.lastOrder = result.order.number;
+      state.account = accounts.current();
+      render();
+    }
     state.cartStep = "success";
     renderCart();
     $('#cart-dialog [data-action="close"]').focus();
+  }
+  const form = event.target;
+  const data = () => Object.fromEntries(new FormData(form));
+  if (form.id === "signin-form") {
+    event.preventDefault();
+    busy(form, async () => {
+      const { email, password, remember } = data();
+      const result = await accounts.signIn({ email, password, remember: Boolean(remember) });
+      if (result.ok) signedIn(result, "signedIn");
+      else showFormError(form, result.error);
+    });
+  }
+  if (form.id === "signup-form") {
+    event.preventDefault();
+    busy(form, async () => {
+      const { name, email, password, remember } = data();
+      const result = await accounts.register({ name, email, password, remember: Boolean(remember) });
+      if (result.ok) signedIn(result, "signedUp");
+      else showFormError(form, result.error);
+    });
+  }
+  if (form.id === "forgot-form") {
+    event.preventDefault();
+    if (!form.email.checkValidity() || !form.email.value.trim()) return showFormError(form, "invalidEmail");
+    // No email service yet: the same neutral message for any address.
+    form.querySelector(".form-error").hidden = true;
+    form.querySelector(".form-success").hidden = false;
+  }
+  if (form.id === "profile-form") {
+    event.preventDefault();
+    const result = accounts.updateProfile(state.account.id, data());
+    if (result.ok) {
+      refreshAccount("profileSaved");
+      $("#profile-form button[type=submit]").focus();
+    } else showFormError(form, result.error);
+  }
+  if (form.id === "password-form") {
+    event.preventDefault();
+    busy(form, async () => {
+      const { current, next } = data();
+      const result = await accounts.changePassword(state.account.id, current, next);
+      if (result.ok) {
+        form.reset();
+        form.querySelector(".form-error").hidden = true;
+        toast(t("passwordChanged"));
+      } else showFormError(form, result.error);
+    });
+  }
+  if (form.id === "delete-form") {
+    event.preventDefault();
+    busy(form, async () => {
+      const result = await accounts.deleteAccount(state.account.id, data().password);
+      if (result.ok) {
+        state.account = null;
+        location.hash = "home";
+        render();
+        toast(t("accountDeleted"));
+      } else showFormError(form, result.error);
+    });
   }
 });
 document.addEventListener("change", (event) => {
@@ -413,6 +618,7 @@ document.addEventListener("change", (event) => {
     render();
     if ($("#product-dialog").open) renderProduct();
     if ($("#cart-dialog").open) renderCart();
+    if ($("#auth-dialog").open) renderAuth();
     $("#language").focus();
   }
   if (event.target.id === "sort") navigateFilters({ sort: event.target.value });
@@ -425,6 +631,10 @@ for (const dialog of document.querySelectorAll("dialog")) {
       const target =
         dialog.id === "cart-dialog"
           ? $(".cart-trigger")
+          : dialog.id === "auth-dialog"
+            ? $("#cart-dialog").open
+              ? $("#cart-dialog [data-action=close]")
+              : $(".header-account") || $("#main")
           : dialog.id === "product-dialog"
             ? $(`[data-action="product"][data-id="${state.product}"]`)
             : $("#main");
@@ -444,6 +654,13 @@ for (const dialog of document.querySelectorAll("dialog")) {
     }
   });
 }
+window.addEventListener("storage", (event) => {
+  if (event.key === "buyduck:session" || event.key === "buyduck:accounts") {
+    const before = state.account?.id;
+    state.account = accounts.current();
+    if (before !== state.account?.id || route().page === "account") render();
+  }
+});
 window.addEventListener("hashchange", () => {
   state.menu = false;
   render();
