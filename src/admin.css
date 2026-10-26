@@ -391,6 +391,9 @@
   .admin-main {
     padding-inline: 16px;
   }
+  .admin-tabs {
+    flex-wrap: wrap;
+  }
   .admin-card {
     padding: 20px 16px;
   }
@@ -404,5 +407,208 @@
     order: 3;
     width: 100%;
     text-align: center;
+  }
+}
+/* Activity dashboard */
+.activity-periods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.activity-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.activity-stat {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  border-radius: 22px;
+  background: var(--canvas);
+}
+.activity-stat span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.activity-stat strong {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.8px;
+  font-variant-numeric: tabular-nums;
+}
+.activity-stats + .admin-hint {
+  margin-top: 12px;
+}
+.activity-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+.activity-panel {
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  min-width: 0;
+}
+.activity-panel > p {
+  margin-bottom: 14px;
+}
+.activity-chart {
+  position: relative;
+  padding-top: 18px;
+}
+.activity-axis {
+  position: absolute;
+  top: 0;
+  left: 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+.activity-bars {
+  display: grid;
+  grid-template-columns: repeat(var(--bars), minmax(0, 1fr));
+  gap: 2px;
+  align-items: end;
+  height: 180px;
+  border-top: 1px dashed var(--border);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 22px;
+  position: relative;
+}
+.activity-bar {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  outline: none;
+}
+.activity-bar > span {
+  width: min(100%, 28px);
+  height: max(var(--h), 2px);
+  background: var(--violet);
+  border-radius: 4px 4px 0 0;
+}
+.activity-bar:hover > span,
+.activity-bar:focus-visible > span {
+  background: #3f22c9;
+}
+.activity-bar:focus-visible {
+  box-shadow: 0 0 0 2px var(--violet);
+  border-radius: 6px;
+}
+.activity-bar > small {
+  position: absolute;
+  bottom: -20px;
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.activity-bar > small.is-quiet {
+  visibility: hidden;
+}
+.activity-bar:hover::after,
+.activity-bar:focus-visible::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(var(--h, 0%) + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 1;
+}
+.activity-table {
+  margin-top: 14px;
+  font-size: 13px;
+}
+.activity-table summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+.activity-table table {
+  margin-top: 10px;
+}
+.activity-funnel {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+.activity-step-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+.activity-step-head strong {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+.activity-step-head small {
+  min-width: 112px;
+  text-align: right;
+  color: var(--muted);
+  font-size: 12px;
+}
+.activity-meter {
+  display: block;
+  height: 8px;
+  border-radius: var(--pill);
+  background: var(--canvas);
+  overflow: hidden;
+}
+.activity-meter > span {
+  display: block;
+  width: var(--w);
+  height: 100%;
+  border-radius: var(--pill);
+  background: var(--violet);
+}
+.activity-empty {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 40px 16px;
+  text-align: center;
+  border-radius: 24px;
+  background: var(--canvas);
+}
+.activity-empty .icon {
+  width: 32px;
+  height: 32px;
+  color: var(--violet);
+}
+.activity-empty h2 {
+  margin: 4px 0 0;
+}
+.activity-empty p {
+  max-width: 460px;
+  margin-bottom: 8px;
+}
+@media (max-width: 900px) {
+  .activity-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .activity-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 640px) {
+  .activity-stat strong {
+    font-size: 22px;
+  }
+  .activity-step-head small {
+    min-width: 0;
   }
 }

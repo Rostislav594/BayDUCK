@@ -8,6 +8,7 @@ import {
   cartTotal,
   addToCart,
 } from "./model.js";
+import { track } from "./analytics.js";
 
 const $ = (selector) => document.querySelector(selector);
 const escape = (value) =>
@@ -240,6 +241,7 @@ function renderProduct() {
     `<div class="dialog-header"><span>BuyDUCK / ${t(p.type)}</span>${iconButton("close", "close", t("close"))}</div><div class="product-detail"><div class="detail-image"><img src="${photo(p)}" alt="${escape(p.name)}" width="900" height="900"/>${favoriteButton(p.id)}</div><div class="detail-content"><p class="eyebrow">${p.brand}</p><h2>${p.name}</h2><p class="detail-kind">${t(p.type)} · ${t(p.color)}</p><div class="detail-price">${money(p.price)} ${p.oldPrice ? `<del>${money(p.oldPrice)}</del>` : ""}</div><p>${t("description")}</p><div class="size-heading"><strong>${t("size")}</strong><button class="subtle-button" data-action="size-guide">${t("sizeGuide")}</button></div><div class="sizes" role="group" aria-label="${t("size")}">${p.sizes.map((size) => `<button data-action="size" data-value="${size}" class="size-button ${state.size === size ? "selected" : ""}" aria-pressed="${state.size === size}">${size}</button>`).join("")}</div><p class="size-guide-copy" hidden>${t("sizeGuideCopy")}</p><button class="button dark add-to-cart" data-action="add-cart" ${!state.size ? "disabled" : ""}>${t(state.size ? "addCart" : "chooseSize")} ${icon("bag")}</button><p class="product-note">${t("productNote")}</p></div></div>`;
 }
 function openProduct(id) {
+  track("product_view", { id });
   state.product = id;
   state.size = null;
   renderProduct();
@@ -328,6 +330,7 @@ document.addEventListener("click", (event) => {
     if (!state.size) return;
     state.cart = addToCart(state.cart, state.product, state.size);
     save("cart");
+    track("add_to_cart", { id: state.product, size: state.size });
     render();
     toast(t("added"));
     button.innerHTML = `${t("added")} ${icon("check")}`;
@@ -359,6 +362,7 @@ document.addEventListener("click", (event) => {
     $('#cart-dialog [data-action="close"]').focus();
   }
   if (action === "checkout") {
+    track("checkout_start", { total: cartTotal(state.cart) });
     state.cartStep = "checkout";
     renderCart();
     $("#checkout-form input").focus();
@@ -378,6 +382,7 @@ document.addEventListener("submit", (event) => {
   if (event.target.matches(".search-form")) {
     event.preventDefault();
     const query = new FormData(event.target).get("search").toString().trim();
+    if (query) track("search", { query });
     navigateFilters({
       page: "catalog",
       query,
@@ -388,7 +393,11 @@ document.addEventListener("submit", (event) => {
   }
   if (event.target.id === "checkout-form") {
     event.preventDefault();
-    // Personal details deliberately stay in the form; no request or storage write is made.
+    // Personal details deliberately stay in the form; only items and total reach the activity log.
+    track("order", {
+      total: cartTotal(state.cart),
+      items: state.cart.map(({ id, quantity }) => ({ id, quantity })),
+    });
     state.cartStep = "success";
     renderCart();
     $('#cart-dialog [data-action="close"]').focus();
@@ -438,6 +447,7 @@ for (const dialog of document.querySelectorAll("dialog")) {
 window.addEventListener("hashchange", () => {
   state.menu = false;
   render();
+  track("page_view", { page: route().page });
   if (location.hash === "#arrivals") {
     $("#arrivals")?.scrollIntoView({ behavior: "smooth" });
     return;
@@ -446,3 +456,4 @@ window.addEventListener("hashchange", () => {
   $("#main").focus({ preventScroll: true });
 });
 render();
+track("page_view", { page: route().page });

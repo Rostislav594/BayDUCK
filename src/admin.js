@@ -6,6 +6,7 @@ import {
   shafaConditions,
   shafaSections,
 } from "./marketplace.js";
+import { clearEvents, periodDays, readEvents, summarize } from "./analytics.js";
 
 // Admin placeholder: reads the demo catalog, saves nothing except the shared language choice.
 const $ = (selector) => document.querySelector(selector);
@@ -28,7 +29,7 @@ function readLanguage() {
     return "uk";
   }
 }
-const state = { language: readLanguage(), shafa: null };
+const state = { language: readLanguage(), shafa: null, period: "week" };
 const t = (key) => dictionaries[state.language][key] || key;
 const money = (value) =>
   new Intl.NumberFormat(
@@ -46,6 +47,8 @@ const paths = {
   globe:
     '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c5 5 5 13 0 18-5-5-5-13 0-18Z"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  chart: '<path d="M4 20V10m6 10V4m6 16v-7m4 7H3"/>',
+  trash: '<path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13"/>',
 };
 const icon = (name) =>
   `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]}</svg>`;
@@ -60,7 +63,9 @@ function toast(message) {
 function route() {
   const [page = "", query = ""] = location.hash.slice(1).split("?");
   return {
-    page: ["products", "shafa", "olx"].includes(page) ? page : "products",
+    page: ["products", "activity", "shafa", "olx"].includes(page)
+      ? page
+      : "products",
     product: new URLSearchParams(query).get("product"),
   };
 }
@@ -81,6 +86,7 @@ function header(page) {
     ["products", "box", t("adminProducts")],
     ["shafa", "tag", "Shafa"],
     ["olx", "link", "OLX"],
+    ["activity", "chart", t("adminActivity")],
   ];
   return `<header class="admin-header"><div class="admin-brand"><a href="index.html" class="admin-logo">BuyDUCK<span>•</span></a><span class="admin-label">${t("adminHeading")}</span></div><p class="admin-stub" role="note">${t("adminStub")}</p><div class="admin-header-actions"><label class="language-control">${icon("globe")}<select id="language" aria-label="${escape(t("language"))}">${[
     ["uk", "UA"],
@@ -179,6 +185,102 @@ function olxView() {
   return `<section class="admin-card admin-stub-card" aria-labelledby="olx-title"><div class="admin-stub-icon">${icon("clock")}</div><h1 id="olx-title">${t("olxStubTitle")}</h1><p class="admin-status">${t("olxStubStatus")}</p><p>${t("olxStubCopy")}</p><div class="admin-stub-actions">${actions}</div><p class="admin-soon">${t("adminSoon")}</p></section>`;
 }
 
+const locale = () => ({ uk: "uk-UA", ru: "ru-UA", en: "en-GB" })[state.language];
+const number = (value) => new Intl.NumberFormat(locale()).format(value);
+const percent = (value) =>
+  new Intl.NumberFormat(locale(), {
+    style: "percent",
+    maximumFractionDigits: 1,
+  }).format(value);
+const shortDate = (key) =>
+  new Intl.DateTimeFormat(locale(), { day: "numeric", month: "short" }).format(
+    new Date(`${key}T12:00:00`),
+  );
+
+function visitsChart(days) {
+  const max = Math.max(1, ...days.map((day) => day.visits));
+  // Label only some days on long periods so captions never collide.
+  const every = days.length > 14 ? Math.ceil(days.length / 8) : 1;
+  const bars = days
+    .map((day, index) => {
+      const label = `${shortDate(day.date)}: ${number(day.visits)}`;
+      const quiet = index % every && index !== days.length - 1;
+      return `<div class="activity-bar" tabindex="0" role="img" aria-label="${escape(label)}" data-tip="${escape(label)}" style="--h:${(day.visits / max) * 100}%"><span></span><small aria-hidden="true" ${quiet ? 'class="is-quiet"' : ""}>${escape(shortDate(day.date))}</small></div>`;
+    })
+    .join("");
+  const rows = days
+    .map(
+      (day) =>
+        `<tr><td>${escape(shortDate(day.date))}</td><td class="admin-num">${number(day.visits)}</td></tr>`,
+    )
+    .join("");
+  return `<div class="activity-chart"><span class="activity-axis" aria-hidden="true">${number(max)}</span><div class="activity-bars" style="--bars:${days.length}">${bars}</div></div><details class="activity-table"><summary>${t("activityShowTable")}</summary><table class="admin-table"><thead><tr><th scope="col">${t("activityDate")}</th><th scope="col" class="admin-num">${t("statVisits")}</th></tr></thead><tbody>${rows}</tbody></table></details>`;
+}
+
+function activityView() {
+  const data = summarize(readEvents(), { period: state.period });
+  const periods = [
+    ["today", "periodToday"],
+    ["week", "periodWeek"],
+    ["month", "periodMonth"],
+    ["all", "periodAll"],
+  ]
+    .map(
+      ([value, key]) =>
+        `<button type="button" class="admin-pill ${state.period === value ? "admin-pill--dark" : ""}" data-period="${value}" aria-pressed="${state.period === value}">${t(key)}</button>`,
+    )
+    .join("");
+  const head = `<div class="admin-card-head"><div><h1 id="activity-title">${t("activityTitle")}</h1><p>${t("activityLocalNote")}</p></div><button type="button" class="admin-pill" data-action="clear-activity">${icon("trash")}${t("activityClear")}</button></div><div class="activity-periods" role="group" aria-label="${escape(t("activityPeriod"))}">${periods}</div>`;
+  if (data.empty)
+    return `<section class="admin-card" aria-labelledby="activity-title">${head}<div class="activity-empty">${icon("chart")}<h2>${t("activityEmpty")}</h2><p>${t("activityEmptyCopy")}</p><a class="admin-pill admin-pill--dark" href="index.html" target="_blank" rel="noopener">${t("activityOpenStore")}${icon("external")}</a></div></section>`;
+  const stats = [
+    ["statVisits", number(data.visits)],
+    ["statPageViews", number(data.pageViews)],
+    ["statProductViews", number(data.productViews)],
+    ["statAddToCart", number(data.addToCart)],
+    ["statCheckouts", number(data.checkouts)],
+    ["statOrders", number(data.orders)],
+    ["statRevenue", money(data.revenue)],
+    ["statConversion", percent(data.conversion)],
+  ]
+    .map(
+      ([key, value]) =>
+        `<div class="activity-stat"><span>${t(key)}</span><strong>${value}</strong></div>`,
+    )
+    .join("");
+  const steps = [
+    ["statVisits", data.funnel.visits],
+    ["statProductViews", data.funnel.productView],
+    ["statAddToCart", data.funnel.cart],
+    ["statCheckouts", data.funnel.checkout],
+    ["statOrders", data.funnel.order],
+  ]
+    .map(([key, value]) => {
+      const share = data.funnel.visits ? value / data.funnel.visits : 0;
+      return `<li><div class="activity-step-head"><span>${t(key)}</span><strong>${number(value)}</strong><small>${percent(share)} ${t("activityOfVisits")}</small></div><span class="activity-meter" aria-hidden="true"><span style="--w:${share * 100}%"></span></span></li>`;
+    })
+    .join("");
+  const productRows = data.topProducts
+    .map((row) => {
+      const p = productById(row.id);
+      return `<tr><td>${escape(p ? p.name : row.id)}</td><td class="admin-num">${number(row.views)}</td><td class="admin-num">${number(row.carts)}</td><td class="admin-num">${number(row.ordered)}</td></tr>`;
+    })
+    .join("");
+  const searchRows = data.searches
+    .map(
+      (row) =>
+        `<tr><td>${escape(row.query)}</td><td class="admin-num">${number(row.count)}</td></tr>`,
+    )
+    .join("");
+  const productsTable = productRows
+    ? `<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th scope="col">${t("adminColProduct")}</th><th scope="col" class="admin-num">${t("activityViews")}</th><th scope="col" class="admin-num">${t("activityCarts")}</th><th scope="col" class="admin-num">${t("activityOrdered")}</th></tr></thead><tbody>${productRows}</tbody></table></div>`
+    : `<p>${t("activityNoProducts")}</p>`;
+  const searchesTable = searchRows
+    ? `<table class="admin-table"><thead><tr><th scope="col">${t("activityQuery")}</th><th scope="col" class="admin-num">${t("activityTimes")}</th></tr></thead><tbody>${searchRows}</tbody></table>`
+    : `<p>${t("activityNoSearches")}</p>`;
+  return `<section class="admin-card" aria-labelledby="activity-title">${head}<div class="activity-stats">${stats}</div><p class="admin-hint">${t("activityOrdersDemo")}</p><div class="activity-grid"><section class="activity-panel"><h2>${t("activityVisitsByDay")}</h2>${visitsChart(data.days)}</section><section class="activity-panel"><h2>${t("activityFunnel")}</h2><p>${t("activityFunnelCopy")}</p><ol class="activity-funnel">${steps}</ol></section><section class="activity-panel"><h2>${t("activityTopProducts")}</h2>${productsTable}</section><section class="activity-panel"><h2>${t("activitySearches")}</h2>${searchesTable}</section></div></section>`;
+}
+
 function render() {
   const r = route();
   if (r.page === "shafa" && (!state.shafa || (r.product && r.product !== state.shafa.id)))
@@ -186,7 +288,13 @@ function render() {
   document.documentElement.lang = state.language;
   document.title = t("adminPageTitle");
   const view =
-    r.page === "shafa" ? shafaView() : r.page === "olx" ? olxView() : productsView();
+    r.page === "shafa"
+      ? shafaView()
+      : r.page === "olx"
+        ? olxView()
+        : r.page === "activity"
+          ? activityView()
+          : productsView();
   $("#admin").innerHTML = `${header(r.page)}<main id="admin-main" class="admin-main" tabindex="-1">${view}</main>`;
 }
 function rerenderKeepingFocus() {
@@ -223,6 +331,18 @@ async function copy(id) {
 }
 
 document.addEventListener("click", (event) => {
+  const period = event.target.closest("[data-period]");
+  if (period && Object.hasOwn(periodDays, period.dataset.period)) {
+    state.period = period.dataset.period;
+    render();
+    document.querySelector(`[data-period="${state.period}"]`)?.focus();
+  }
+  if (event.target.closest('[data-action="clear-activity"]')) {
+    if (!confirm(t("activityClearConfirm"))) return;
+    clearEvents();
+    render();
+    toast(t("activityCleared"));
+  }
   const button = event.target.closest("[data-copy]");
   if (button) copy(button.dataset.copy);
 });
@@ -248,6 +368,10 @@ document.addEventListener("change", (event) => {
   } catch {}
   render();
   $("#language").focus();
+});
+// The store tab writes events to the same localStorage; refresh the open dashboard live.
+window.addEventListener("storage", (event) => {
+  if (event.key === "buyduck:events" && route().page === "activity") render();
 });
 window.addEventListener("hashchange", () => {
   render();
