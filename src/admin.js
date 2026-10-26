@@ -9,6 +9,8 @@ import {
 import { clearEvents, periodDays, readEvents, summarize } from "./analytics.js";
 
 // Admin placeholder: reads the demo catalog, saves nothing except the shared language choice.
+// The admin is Ukrainian/Russian only; an English choice from the store falls back to Ukrainian.
+const adminLanguages = { uk: "UA", ru: "RU" };
 const $ = (selector) => document.querySelector(selector);
 const escape = (value) =>
   String(value).replace(
@@ -24,16 +26,17 @@ function readLanguage() {
       localStorage.getItem("buyduck:language") ??
       localStorage.getItem("bayduck:language");
     const value = JSON.parse(raw);
-    return Object.hasOwn(dictionaries, value) ? value : "uk";
+    return Object.hasOwn(adminLanguages, value) ? value : "uk";
   } catch {
     return "uk";
   }
 }
 const state = { language: readLanguage(), shafa: null, period: "week" };
 const t = (key) => dictionaries[state.language][key] || key;
+const locale = () => ({ uk: "uk-UA", ru: "ru-UA" })[state.language];
 const money = (value) =>
   new Intl.NumberFormat(
-    { uk: "uk-UA", ru: "ru-UA", en: "en-UA" }[state.language],
+    locale(),
     { style: "currency", currency: "UAH", maximumFractionDigits: 0 },
   ).format(value);
 const paths = {
@@ -88,11 +91,7 @@ function header(page) {
     ["olx", "link", "OLX"],
     ["activity", "chart", t("adminActivity")],
   ];
-  return `<header class="admin-header"><div class="admin-brand"><a href="index.html" class="admin-logo">BuyDUCK<span>•</span></a><span class="admin-label">${t("adminHeading")}</span></div><p class="admin-stub" role="note">${t("adminStub")}</p><div class="admin-header-actions"><label class="language-control">${icon("globe")}<select id="language" aria-label="${escape(t("language"))}">${[
-    ["uk", "UA"],
-    ["ru", "RU"],
-    ["en", "EN"],
-  ]
+  return `<header class="admin-header"><span class="admin-logo">Admin</span><p class="admin-stub" role="note">${t("adminStub")}</p><div class="admin-header-actions"><label class="language-control">${icon("globe")}<select id="language" aria-label="${escape(t("language"))}">${Object.entries(adminLanguages)
     .map(
       ([value, label]) =>
         `<option value="${value}" ${state.language === value ? "selected" : ""}>${label}</option>`,
@@ -185,7 +184,6 @@ function olxView() {
   return `<section class="admin-card admin-stub-card" aria-labelledby="olx-title"><div class="admin-stub-icon">${icon("clock")}</div><h1 id="olx-title">${t("olxStubTitle")}</h1><p class="admin-status">${t("olxStubStatus")}</p><p>${t("olxStubCopy")}</p><div class="admin-stub-actions">${actions}</div><p class="admin-soon">${t("adminSoon")}</p></section>`;
 }
 
-const locale = () => ({ uk: "uk-UA", ru: "ru-UA", en: "en-GB" })[state.language];
 const number = (value) => new Intl.NumberFormat(locale()).format(value);
 const percent = (value) =>
   new Intl.NumberFormat(locale(), {
@@ -360,7 +358,7 @@ document.addEventListener("input", (event) => {
   rerenderKeepingFocus();
 });
 document.addEventListener("change", (event) => {
-  if (event.target.id !== "language" || !Object.hasOwn(dictionaries, event.target.value))
+  if (event.target.id !== "language" || !Object.hasOwn(adminLanguages, event.target.value))
     return;
   state.language = event.target.value;
   try {

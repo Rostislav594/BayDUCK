@@ -25,22 +25,12 @@
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
-.admin-brand {
-  display: flex;
-  align-items: baseline;
-  gap: 14px;
-}
 .admin-logo {
   font-size: 24px;
   font-weight: 600;
   letter-spacing: -1.2px;
-}
-.admin-logo span {
-  color: var(--violet);
-}
-.admin-label {
-  font-size: 13px;
-  color: var(--muted);
+  cursor: default;
+  user-select: none;
 }
 .admin-stub {
   margin: 0;

@@ -140,7 +140,6 @@ export const dictionaries = {
     storageNotice:
       "Браузер не дозволив зберегти вибір. Він збережеться до закриття сторінки.",
     adminPageTitle: "BuyDUCK — Адмін-панель",
-    adminHeading: "Адмін-панель",
     adminStub: "Заглушка: демо-товари, зміни не зберігаються",
     adminToStore: "До магазину",
     adminSections: "Розділи адмін-панелі",
@@ -368,7 +367,6 @@ export const dictionaries = {
     storageNotice:
       "Браузер не позволил сохранить выбор. Он сохранится до закрытия страницы.",
     adminPageTitle: "BuyDUCK — Админ-панель",
-    adminHeading: "Админ-панель",
     adminStub: "Заглушка: демо-товары, изменения не сохраняются",
     adminToStore: "В магазин",
     adminSections: "Разделы админ-панели",
@@ -596,7 +594,6 @@ export const dictionaries = {
     storageNotice:
       "Your browser could not save your selection. It will remain available until you close this page.",
     adminPageTitle: "BuyDUCK — Admin panel",
-    adminHeading: "Admin panel",
     adminStub: "Placeholder: demo products, changes are not saved",
     adminToStore: "Back to store",
     adminSections: "Admin sections",
