@@ -23,13 +23,18 @@ createServer(async (request, response) => {
     );
     const path = resolve(
       root,
-      "." + (pathname === "/" ? "/index.html" : pathname),
+      "." +
+        (pathname === "/"
+          ? "/index.html"
+          : pathname === "/admin"
+            ? "/admin.html"
+            : pathname),
     );
     const relativePath = path.slice(root.length + 1).split(sep);
     if (
       !path.startsWith(root + sep) ||
       relativePath.some((part) => part.startsWith(".")) ||
-      !["index.html", "src", "assets"].includes(relativePath[0])
+      !["index.html", "admin.html", "src", "assets"].includes(relativePath[0])
     ) {
       response.writeHead(403).end("Forbidden");
       return;
@@ -47,12 +52,12 @@ createServer(async (request, response) => {
     response.writeHead(404).end("Not found");
   }
 }).listen(port, host, () => {
-  console.log(`BayDUCK local preview: http://127.0.0.1:${port}`);
+  console.log(`BuyDUCK local preview: http://127.0.0.1:${port}`);
   if (lan) {
     for (const entries of Object.values(networkInterfaces())) {
       for (const entry of entries || []) {
         if (entry.family === "IPv4" && !entry.internal) {
-          console.log(`BayDUCK network preview: http://${entry.address}:${port}`);
+          console.log(`BuyDUCK network preview: http://${entry.address}:${port}`);
         }
       }
     }
