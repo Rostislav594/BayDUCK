@@ -220,38 +220,16 @@
   color: var(--muted);
   font-size: 12px;
 }
-/* Shafa template */
-.shafa-layout {
-  display: grid;
-  grid-template-columns: minmax(260px, 340px) 1fr;
-  gap: 28px;
-  align-items: start;
-}
-.shafa-settings {
-  padding: 20px;
-  border-radius: 24px;
-  background: var(--canvas);
-}
-.shafa-form {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
+/* Form controls */
 .admin-control {
   display: grid;
   gap: 6px;
   font-size: 12px;
   color: var(--muted);
 }
-.admin-control:first-child,
-.admin-control--wide {
-  grid-column: 1 / -1;
-}
 .admin-control select,
 .admin-control input,
-.admin-control textarea,
-.shafa-field input,
-.shafa-field textarea {
+.admin-control textarea {
   width: 100%;
   border: 1px solid var(--border);
   background: var(--surface);
@@ -266,75 +244,11 @@
   padding: 0 14px;
   border-radius: var(--pill);
 }
-.admin-control textarea,
-.shafa-field textarea {
+.admin-control textarea {
   padding: 12px 14px;
   border-radius: 18px;
   resize: vertical;
   line-height: 1.45;
-}
-.shafa-photo {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-top: 16px;
-}
-.shafa-photo img {
-  width: 88px;
-  height: 88px;
-  object-fit: cover;
-  border-radius: 20px;
-}
-.shafa-result {
-  display: grid;
-  gap: 14px;
-}
-.shafa-result h2 {
-  margin-bottom: 0;
-}
-.shafa-field {
-  display: grid;
-  gap: 6px;
-}
-.shafa-field-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 13px;
-}
-.shafa-field-head label {
-  font-weight: 500;
-}
-.shafa-field input {
-  min-height: 44px;
-  padding: 0 14px;
-  border-radius: var(--pill);
-}
-.shafa-field input:focus,
-.shafa-field textarea:focus {
-  border-color: var(--violet);
-}
-.admin-chars {
-  color: var(--muted);
-  font-size: 11px;
-}
-.admin-copy {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: var(--pill);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  font-size: 12px;
-}
-.admin-copy:hover {
-  background: var(--canvas);
-}
-.admin-body .admin-copy .icon {
-  width: 15px;
-  height: 15px;
 }
 .admin-hint {
   padding: 12px 16px;
@@ -370,11 +284,6 @@
   gap: 10px;
   margin: 24px 0 10px;
 }
-@media (max-width: 900px) {
-  .shafa-layout {
-    grid-template-columns: 1fr;
-  }
-}
 @media (max-width: 640px) {
   .admin-header,
   .admin-tabs,
@@ -389,9 +298,6 @@
   }
   .admin-card-head {
     flex-direction: column;
-  }
-  .shafa-form {
-    grid-template-columns: 1fr;
   }
   .admin-stub {
     order: 3;
