@@ -7,6 +7,9 @@ import {
   shafaSections,
 } from "./marketplace.js";
 import { clearEvents, periodDays, readEvents, summarize } from "./analytics.js";
+import { createOrderStore, orderStatuses, trackingUrl } from "./orders.js";
+
+const orderStore = createOrderStore();
 
 // Admin placeholder: reads the demo catalog, saves nothing except the shared language choice.
 // The admin is Ukrainian/Russian only; an English choice from the store falls back to Ukrainian.
@@ -31,7 +34,7 @@ function readLanguage() {
     return "uk";
   }
 }
-const state = { language: readLanguage(), shafa: null, period: "week" };
+const state = { language: readLanguage(), shafa: null, period: "week", orderFilter: "all" };
 const t = (key) => dictionaries[state.language][key] || key;
 const locale = () => ({ uk: "uk-UA", ru: "ru-UA" })[state.language];
 const money = (value) =>
@@ -50,6 +53,7 @@ const paths = {
   globe:
     '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c5 5 5 13 0 18-5-5-5-13 0-18Z"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  bag: '<path d="M5 7h14l2 14H3L5 7Z"/><path d="M8 8V6a4 4 0 0 1 8 0v2"/>',
   chart: '<path d="M4 20V10m6 10V4m6 16v-7m4 7H3"/>',
   trash: '<path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13"/>',
 };
@@ -66,7 +70,7 @@ function toast(message) {
 function route() {
   const [page = "", query = ""] = location.hash.slice(1).split("?");
   return {
-    page: ["products", "activity", "shafa", "olx"].includes(page)
+    page: ["products", "orders", "activity", "shafa", "olx"].includes(page)
       ? page
       : "products",
     product: new URLSearchParams(query).get("product"),
@@ -87,6 +91,7 @@ function shafaDefaults(id) {
 function header(page) {
   const tabs = [
     ["products", "box", t("adminProducts")],
+    ["orders", "bag", t("adminOrders")],
     ["shafa", "tag", "Shafa"],
     ["olx", "link", "OLX"],
     ["activity", "chart", t("adminActivity")],
@@ -240,6 +245,7 @@ function activityView() {
     ["statOrders", number(data.orders)],
     ["statRevenue", money(data.revenue)],
     ["statConversion", percent(data.conversion)],
+    ["statOlxClicks", number(data.olxClicks)],
   ]
     .map(
       ([key, value]) =>
@@ -279,6 +285,59 @@ function activityView() {
   return `<section class="admin-card" aria-labelledby="activity-title">${head}<div class="activity-stats">${stats}</div><p class="admin-hint">${t("activityOrdersDemo")}</p><div class="activity-grid"><section class="activity-panel"><h2>${t("activityVisitsByDay")}</h2>${visitsChart(data.days)}</section><section class="activity-panel"><h2>${t("activityFunnel")}</h2><p>${t("activityFunnelCopy")}</p><ol class="activity-funnel">${steps}</ol></section><section class="activity-panel"><h2>${t("activityTopProducts")}</h2>${productsTable}</section><section class="activity-panel"><h2>${t("activitySearches")}</h2>${searchesTable}</section></div></section>`;
 }
 
+const statusText = (status) => t(`status${status[0].toUpperCase()}${status.slice(1)}`);
+const orderTime = (time) =>
+  new Intl.DateTimeFormat(locale(), {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(time);
+
+function orderAdminCard(order) {
+  const items = order.items
+    .map((item) => {
+      const p = productById(item.id);
+      return `<li>${p ? `<img src="assets/products/${p.image}" alt="" width="48" height="48" loading="lazy"/>` : ""}<span><strong>${escape(p ? p.name : item.id)}</strong><small>${t("sizeLabel")}: ${escape(item.size)} · ${number(item.quantity)} ${t("qtyShort")}</small></span><span class="admin-num">${money(item.price * item.quantity)}</span></li>`;
+    })
+    .join("");
+  const phone = order.customer.phone;
+  const contacts = `<a class="admin-pill ${order.confirm === "viber" ? "admin-pill--dark" : ""}" href="viber://chat?number=${encodeURIComponent(phone)}">${t("writeViber")}</a><a class="admin-pill ${order.confirm === "telegram" ? "admin-pill--dark" : ""}" href="https://t.me/${encodeURIComponent(phone)}" target="_blank" rel="noopener noreferrer">${t("writeTelegram")}</a>`;
+  const statuses = orderStatuses
+    .map(
+      (status) =>
+        `<option value="${status}" ${order.status === status ? "selected" : ""}>${statusText(status)}</option>`,
+    )
+    .join("");
+  const reminder = ["new", "confirmed"].includes(order.status)
+    ? `<p class="admin-hint order-reminder">${t("olxReminder")}</p>`
+    : "";
+  const tracking = order.waybill
+    ? `<a href="${trackingUrl(order.waybill)}" target="_blank" rel="noopener noreferrer">${t("trackParcel")}${icon("external")}</a>`
+    : "";
+  return `<article class="order-admin status-${order.status}"><header><div><h2>${escape(order.number)}</h2><p>${orderTime(order.createdAt)} · ${t(order.accountId ? "orderRegistered" : "orderGuest")}</p></div><label class="admin-control order-status-control">${t("orderStatusLabel")}<select data-order-status="${escape(order.number)}">${statuses}</select></label></header>${reminder}<div class="order-admin-grid"><section><h3>${t("adminColProduct")}</h3><ul class="order-admin-items">${items}</ul><p class="order-admin-total"><span>${t("total")}</span><strong>${money(order.total)}</strong></p></section><section><h3>${t("orderCustomer")}</h3><p><strong>${escape(`${order.customer.lastName} ${order.customer.firstName}`)}</strong><br/><a href="tel:${escape(phone)}">${escape(phone)}</a></p><p class="order-admin-contacts">${contacts}</p><dl><dt>${t("orderConfirmVia")}</dt><dd>${order.confirm === "telegram" ? "Telegram" : "Viber"}</dd><dt>${t("orderDelivery")}</dt><dd>${escape(order.delivery.city)}, ${t(order.delivery.type === "locker" ? "deliveryLocker" : "deliveryBranch")} №${escape(order.delivery.point)}</dd><dt>${t("paymentTitle")}</dt><dd>${t(order.payment === "card" ? "paymentCard" : "paymentCod")}</dd>${order.comment ? `<dt>${t("orderComment")}</dt><dd>${escape(order.comment)}</dd>` : ""}</dl></section></div><form class="order-waybill" data-waybill="${escape(order.number)}"><label class="admin-control">${t("waybillLabel")}<input name="waybill" inputmode="numeric" maxlength="20" placeholder="${escape(t("waybillPlaceholder"))}" value="${escape(order.waybill || "")}"/></label><button type="submit" class="admin-pill">${t("saveWaybill")}</button>${tracking}</form></article>`;
+}
+
+function ordersView() {
+  const all = orderStore.list();
+  const counts = Object.fromEntries(
+    orderStatuses.map((status) => [status, all.filter((order) => order.status === status).length]),
+  );
+  const filters = [["all", t("ordersFilterAll"), all.length], ...orderStatuses.map((status) => [status, statusText(status), counts[status]])]
+    .filter(([value, , total]) => value === "all" || total > 0 || value === state.orderFilter)
+    .map(
+      ([value, label, total]) =>
+        `<button type="button" class="admin-pill ${state.orderFilter === value ? "admin-pill--dark" : ""}" data-order-filter="${value}" aria-pressed="${state.orderFilter === value}">${escape(label)} <span class="admin-count">${number(total)}</span></button>`,
+    )
+    .join("");
+  const visible =
+    state.orderFilter === "all" ? all : all.filter((order) => order.status === state.orderFilter);
+  const head = `<div class="admin-card-head"><div><h1 id="orders-title">${t("adminOrders")} <span class="admin-count">${number(all.length)}</span></h1><p>${t("ordersAdminCopy")}</p></div></div>`;
+  if (!all.length)
+    return `<section class="admin-card" aria-labelledby="orders-title">${head}<div class="activity-empty">${icon("box")}<h2>${t("ordersEmpty")}</h2><p>${t("ordersEmptyCopy")}</p><a class="admin-pill admin-pill--dark" href="index.html" target="_blank" rel="noopener">${t("activityOpenStore")}${icon("external")}</a></div></section>`;
+  return `<section class="admin-card" aria-labelledby="orders-title">${head}<div class="activity-periods" role="group" aria-label="${escape(t("orderStatusLabel"))}">${filters}</div><div class="order-admin-list">${visible.map(orderAdminCard).join("")}</div></section>`;
+}
+
 function render() {
   const r = route();
   if (r.page === "shafa" && (!state.shafa || (r.product && r.product !== state.shafa.id)))
@@ -292,7 +351,9 @@ function render() {
         ? olxView()
         : r.page === "activity"
           ? activityView()
-          : productsView();
+          : r.page === "orders"
+            ? ordersView()
+            : productsView();
   $("#admin").innerHTML = `${header(r.page)}<main id="admin-main" class="admin-main" tabindex="-1">${view}</main>`;
 }
 function rerenderKeepingFocus() {
@@ -329,6 +390,12 @@ async function copy(id) {
 }
 
 document.addEventListener("click", (event) => {
+  const filter = event.target.closest("[data-order-filter]");
+  if (filter && (filter.dataset.orderFilter === "all" || orderStatuses.includes(filter.dataset.orderFilter))) {
+    state.orderFilter = filter.dataset.orderFilter;
+    render();
+    document.querySelector(`[data-order-filter="${state.orderFilter}"]`)?.focus();
+  }
   const period = event.target.closest("[data-period]");
   if (period && Object.hasOwn(periodDays, period.dataset.period)) {
     state.period = period.dataset.period;
@@ -358,6 +425,14 @@ document.addEventListener("input", (event) => {
   rerenderKeepingFocus();
 });
 document.addEventListener("change", (event) => {
+  const statusSelect = event.target.closest("[data-order-status]");
+  if (statusSelect) {
+    const result = orderStore.update(statusSelect.dataset.orderStatus, { status: statusSelect.value });
+    toast(result.ok ? t("orderUpdated") : t(`err${result.error[0].toUpperCase()}${result.error.slice(1)}`));
+    render();
+    document.querySelector(`[data-order-status="${statusSelect.dataset.orderStatus}"]`)?.focus();
+    return;
+  }
   if (event.target.id !== "language" || !Object.hasOwn(adminLanguages, event.target.value))
     return;
   state.language = event.target.value;
@@ -370,6 +445,18 @@ document.addEventListener("change", (event) => {
 // The store tab writes events to the same localStorage; refresh the open dashboard live.
 window.addEventListener("storage", (event) => {
   if (event.key === "buyduck:events" && route().page === "activity") render();
+  if (event.key === "buyduck:orders" && route().page === "orders") render();
+});
+document.addEventListener("submit", (event) => {
+  const form = event.target.closest("[data-waybill]");
+  if (!form) return;
+  event.preventDefault();
+  const number = form.dataset.waybill;
+  const result = orderStore.update(number, { waybill: form.elements.waybill.value });
+  toast(result.ok ? t("orderUpdated") : t(`err${result.error[0].toUpperCase()}${result.error.slice(1)}`));
+  if (!result.ok) return form.elements.waybill.focus();
+  render();
+  document.querySelector(`[data-waybill="${number}"] input`)?.focus();
 });
 window.addEventListener("hashchange", () => {
   render();

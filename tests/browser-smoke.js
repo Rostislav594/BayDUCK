@@ -36,13 +36,15 @@ async (page) => {
   await page.locator('[data-action="checkout"]').click();
   await page.locator('#checkout-form button[type="submit"]').click();
   check(await page.locator('#checkout-form').count() === 1, 'Required checkout fields block empty submission');
-  await page.locator('[name="name"]').fill('Demo Tester');
+  await page.locator('[name="lastName"]').fill('Tester');
+  await page.locator('[name="firstName"]').fill('Demo');
   await page.locator('[name="phone"]').fill('+380501234567');
   await page.locator('[name="city"]').fill('Kyiv');
-  await page.locator('[name="branch"]').fill('1');
+  await page.locator('[name="point"]').fill('1');
   await page.locator('#checkout-form button[type="submit"]').click();
-  check(await page.locator('.success-state').count() === 1, 'Demo checkout completes');
-  check(await page.evaluate(() => !Object.values(localStorage).some(v => v.includes('Demo Tester') || v.includes('+380501234567'))), 'Checkout personal data not stored');
+  check(await page.locator('.success-state').count() === 1, 'Nova Poshta checkout completes');
+  // Guests get no profile: delivery details live only inside the order the seller ships.
+  check(await page.evaluate(() => Object.entries(localStorage).every(([k, v]) => k === 'buyduck:orders' || !v.includes('+380501234567'))), 'Guest details stored only in the order');
   await page.keyboard.press('Escape');
   await page.locator('.search-form input').fill('Court');
   await page.locator('.search-form button').click();

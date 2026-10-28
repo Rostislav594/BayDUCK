@@ -11,6 +11,7 @@ export const eventTypes = [
   "checkout_start",
   "order",
   "search",
+  "olx_click",
 ];
 
 const isEvent = (event) =>
@@ -145,6 +146,7 @@ export function summarize(events, { period = "week", now = Date.now() } = {}) {
     addToCart: count("add_to_cart"),
     checkouts: count("checkout_start"),
     orders: orders.length,
+    olxClicks: count("olx_click"),
     revenue,
     conversion: visits ? funnel.order / visits : 0,
     funnel,

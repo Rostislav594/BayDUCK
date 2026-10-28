@@ -10,8 +10,10 @@ import {
 } from "./model.js";
 import { track } from "./analytics.js";
 import { createAccountStore } from "./accounts.js";
+import { createOrderStore, npDemoCities, trackingUrl } from "./orders.js";
 
 const accounts = createAccountStore();
+const orders = createOrderStore();
 
 const $ = (selector) => document.querySelector(selector);
 const escape = (value) =>
@@ -44,6 +46,10 @@ const state = {
   product: null,
   size: null,
   cartStep: "cart",
+  // Nova Poshta checkout on the site, or OLX Safe Deal on the OLX listing.
+  buyMethod: "np",
+  // Unsent checkout fields, kept in memory only so switching methods keeps them.
+  checkoutDraft: {},
   menu: false,
   account: accounts.current(),
   authView: "signin",
@@ -232,6 +238,19 @@ const formError = () => `<p class="form-error" role="alert" hidden></p>`;
 const shortDate = (time) =>
   new Intl.DateTimeFormat({ uk: "uk-UA", ru: "ru-UA", en: "en-GB" }[state.language], { day: "numeric", month: "long", year: "numeric" }).format(time);
 
+const statusLabel = (order) =>
+  order.status === "demo"
+    ? t("orderDemoStatus")
+    : t(`status${order.status[0].toUpperCase()}${order.status.slice(1)}`);
+const deliveryLabel = (delivery) =>
+  delivery.point
+    ? `${delivery.city}, ${t(delivery.type === "locker" ? "deliveryLocker" : "deliveryBranch")} №${delivery.point}`
+    : [delivery.city, delivery.branch].filter(Boolean).join(", ");
+function accountOrders(a) {
+  const current = orders.forAccount(a.id);
+  const numbers = new Set(current.map((order) => order.number));
+  return [...current, ...a.orders.filter((order) => !numbers.has(order.number))];
+}
 function orderCard(order) {
   const rows = order.items
     .map((item) => {
@@ -239,17 +258,18 @@ function orderCard(order) {
       return `<li>${p ? `<img src="${photo(p)}" alt="" width="56" height="56" loading="lazy"/>` : ""}<span><strong>${escape(p ? p.name : item.id)}</strong><small>${t("sizeLabel")}: ${escape(item.size)} · ${item.quantity} ${t("qtyShort")}</small></span><span>${money(item.price * item.quantity)}</span></li>`;
     })
     .join("");
-  return `<article class="order-card"><header><div><h3>${t("orderNumber")} ${escape(order.number)}</h3><p>${shortDate(order.createdAt)}</p></div><span class="order-status">${t("orderDemoStatus")}</span></header><ul>${rows}</ul><footer><span>${t("orderDelivery")}: ${escape([order.delivery.city, order.delivery.branch].filter(Boolean).join(", "))}</span><strong>${money(order.total)}</strong></footer></article>`;
+  return `<article class="order-card"><header><div><h3>${t("orderNumber")} ${escape(order.number)}</h3><p>${shortDate(order.createdAt)}</p></div><span class="order-status">${escape(statusLabel(order))}</span></header><ul>${rows}</ul><footer><span>${t("orderDelivery")}: ${escape(deliveryLabel(order.delivery))}${order.waybill ? `<br/>${t("waybillLabel")} ${escape(order.waybill)} · <a href="${trackingUrl(order.waybill)}" target="_blank" rel="noopener noreferrer">${t("trackParcel")}</a>` : ""}</span><strong>${money(order.total)}</strong></footer></article>`;
 }
 function account() {
   const a = state.account;
   const crumbs = `<div class="breadcrumbs"><a href="#home">${t("home")}</a>${icon("chevron")}<span>${t("account")}</span></div>`;
   if (!a)
     return `<main id="main" class="account-page content-wrap" tabindex="-1">${crumbs}<div class="empty-state account-empty">${icon("user")}<h1>${t("accountSignedOutTitle")}</h1><p>${t("accountSignedOutCopy")}</p><div class="account-empty-actions"><button type="button" class="button dark" data-action="auth">${t("signIn")} ${icon("arrow")}</button><button type="button" class="button outline" data-action="auth" data-view="signup">${t("signUp")}</button></div></div></main>`;
-  const orders = a.orders.length
-    ? `<div class="order-list">${a.orders.map(orderCard).join("")}</div>`
+  const history = accountOrders(a);
+  const ordersList = history.length
+    ? `<div class="order-list">${history.map(orderCard).join("")}</div>`
     : `<div class="empty-state account-orders-empty">${icon("bag")}<h3>${t("noOrders")}</h3><p>${t("noOrdersCopy")}</p><a href="#catalog" class="button dark">${t("backCatalog")} ${icon("arrow")}</a></div>`;
-  return `<main id="main" class="account-page content-wrap" tabindex="-1">${crumbs}<div class="account-intro"><div><p class="eyebrow">${t("account")}</p><h1>${t("accountHello")}, ${escape(a.name)}</h1><p>${escape(a.email)} · ${t("memberSince")} ${shortDate(a.createdAt)}</p></div><button type="button" class="button outline" data-action="sign-out">${t("signOut")}</button></div><p class="account-demo-note">${t("authDemoNote")}</p><div class="account-grid"><section class="account-card account-orders" aria-labelledby="orders-title"><h2 id="orders-title">${t("ordersTitle")}</h2>${orders}</section><div class="account-side"><section class="account-card" aria-labelledby="profile-title"><h2 id="profile-title">${t("profileTitle")}</h2><p>${t("profileCopy")}</p><form id="profile-form" class="account-form" novalidate>${field("name", t("name"), 'autocomplete="name" required minlength="2" maxlength="80"', a.name)}${field("phone", t("phone"), 'type="tel" autocomplete="tel" inputmode="tel" maxlength="20" placeholder="+380"', a.phone)}${field("city", t("city"), 'autocomplete="address-level2" maxlength="80"', a.city)}${field("branch", t("branch"), 'maxlength="120"', a.branch)}${formError()}<button class="button dark" type="submit">${t("saveChanges")}</button></form></section><section class="account-card" aria-labelledby="security-title"><h2 id="security-title">${t("securityTitle")}</h2><form id="password-form" class="account-form" novalidate><input type="email" name="username" autocomplete="username" value="${escape(a.email)}" hidden />${passwordField("current", t("currentPassword"), "current-password")}${passwordField("next", t("newPassword"), "new-password", t("passwordHint"))}${formError()}<button class="button dark" type="submit">${t("changePassword")}</button></form><details class="account-danger"><summary>${t("deleteAccount")}</summary><form id="delete-form" class="account-form" novalidate><p>${t("deleteAccountCopy")}</p><input type="email" name="username" autocomplete="username" value="${escape(a.email)}" hidden />${passwordField("password", t("password"), "current-password")}${formError()}<button class="button danger" type="submit">${t("deleteConfirm")}</button></form></details></section></div></div></main>`;
+  return `<main id="main" class="account-page content-wrap" tabindex="-1">${crumbs}<div class="account-intro"><div><p class="eyebrow">${t("account")}</p><h1>${t("accountHello")}, ${escape(a.name)}</h1><p>${escape(a.email)} · ${t("memberSince")} ${shortDate(a.createdAt)}</p></div><button type="button" class="button outline" data-action="sign-out">${t("signOut")}</button></div><p class="account-demo-note">${t("authDemoNote")}</p><div class="account-grid"><section class="account-card account-orders" aria-labelledby="orders-title"><h2 id="orders-title">${t("ordersTitle")}</h2>${ordersList}</section><div class="account-side"><section class="account-card" aria-labelledby="profile-title"><h2 id="profile-title">${t("profileTitle")}</h2><p>${t("profileCopy")}</p><form id="profile-form" class="account-form" novalidate>${field("name", t("name"), 'autocomplete="name" required minlength="2" maxlength="80"', a.name)}${field("phone", t("phone"), 'type="tel" autocomplete="tel" inputmode="tel" maxlength="20" placeholder="+380"', a.phone)}${field("city", t("city"), 'autocomplete="address-level2" maxlength="80"', a.city)}${field("branch", t("branch"), 'maxlength="120"', a.branch)}${formError()}<button class="button dark" type="submit">${t("saveChanges")}</button></form></section><section class="account-card" aria-labelledby="security-title"><h2 id="security-title">${t("securityTitle")}</h2><form id="password-form" class="account-form" novalidate><input type="email" name="username" autocomplete="username" value="${escape(a.email)}" hidden />${passwordField("current", t("currentPassword"), "current-password")}${passwordField("next", t("newPassword"), "new-password", t("passwordHint"))}${formError()}<button class="button dark" type="submit">${t("changePassword")}</button></form><details class="account-danger"><summary>${t("deleteAccount")}</summary><form id="delete-form" class="account-form" novalidate><p>${t("deleteAccountCopy")}</p><input type="email" name="username" autocomplete="username" value="${escape(a.email)}" hidden />${passwordField("password", t("password"), "current-password")}${formError()}<button class="button danger" type="submit">${t("deleteConfirm")}</button></form></details></section></div></div></main>`;
 }
 function footer() {
   return `<footer class="footer"><div class="footer-top"><div class="footer-brand"><a href="#home">BuyDUCK</a><p>${t("footerCopy")}</p></div><div><h3>${t("help")}</h3><button data-action="info" data-topic="delivery">${t("delivery")}</button><button data-action="info" data-topic="returns">${t("returns")}</button><button data-action="info" data-topic="about">${t("about")}</button></div><a href="#catalog" class="footer-cta">${t("explore")}${icon("arrow")}</a></div><div class="footer-bottom"><span>© ${new Date().getFullYear()} BuyDUCK. ${t("rights")}</span><p>${t("prototype")}</p><span>${t("footerMotto")} ↗</span></div></footer>`;
@@ -281,7 +301,7 @@ function renderProduct() {
   if (!p) return;
   $("#product-dialog").setAttribute("aria-label", p.name);
   $("#product-dialog").innerHTML =
-    `<div class="dialog-header"><span>BuyDUCK / ${t(p.type)}</span>${iconButton("close", "close", t("close"))}</div><div class="product-detail"><div class="detail-image"><img src="${photo(p)}" alt="${escape(p.name)}" width="900" height="900"/>${favoriteButton(p.id)}</div><div class="detail-content"><p class="eyebrow">${p.brand}</p><h2>${p.name}</h2><p class="detail-kind">${t(p.type)} · ${t(p.color)}</p><div class="detail-price">${money(p.price)} ${p.oldPrice ? `<del>${money(p.oldPrice)}</del>` : ""}</div><p>${t("description")}</p><div class="size-heading"><strong>${t("size")}</strong><button class="subtle-button" data-action="size-guide">${t("sizeGuide")}</button></div><div class="sizes" role="group" aria-label="${t("size")}">${p.sizes.map((size) => `<button data-action="size" data-value="${size}" class="size-button ${state.size === size ? "selected" : ""}" aria-pressed="${state.size === size}">${size}</button>`).join("")}</div><p class="size-guide-copy" hidden>${t("sizeGuideCopy")}</p><button class="button dark add-to-cart" data-action="add-cart" ${!state.size ? "disabled" : ""}>${t(state.size ? "addCart" : "chooseSize")} ${icon("bag")}</button><p class="product-note">${t("productNote")}</p></div></div>`;
+    `<div class="dialog-header"><span>BuyDUCK / ${t(p.type)}</span>${iconButton("close", "close", t("close"))}</div><div class="product-detail"><div class="detail-image"><img src="${photo(p)}" alt="${escape(p.name)}" width="900" height="900"/>${favoriteButton(p.id)}</div><div class="detail-content"><p class="eyebrow">${p.brand}</p><h2>${p.name}</h2><p class="detail-kind">${t(p.type)} · ${t(p.color)}</p><div class="detail-price">${money(p.price)} ${p.oldPrice ? `<del>${money(p.oldPrice)}</del>` : ""}</div><p>${t("description")}</p><div class="size-heading"><strong>${t("size")}</strong><button class="subtle-button" data-action="size-guide">${t("sizeGuide")}</button></div><div class="sizes" role="group" aria-label="${t("size")}">${p.sizes.map((size) => `<button data-action="size" data-value="${size}" class="size-button ${state.size === size ? "selected" : ""}" aria-pressed="${state.size === size}">${size}</button>`).join("")}</div><p class="size-guide-copy" hidden>${t("sizeGuideCopy")}</p><button class="button dark add-to-cart" data-action="add-cart" ${!state.size ? "disabled" : ""}>${t(state.size ? "addCart" : "chooseSize")} ${icon("bag")}</button><button type="button" class="button outline olx-buy" data-action="olx" data-id="${p.id}">${t("buyOlx")} ${icon("arrow")}</button><p class="product-note olx-note">${t("buyOlxNote")}</p><p class="product-note">${t("productNote")}</p></div></div>`;
 }
 function openProduct(id) {
   track("product_view", { id });
@@ -290,18 +310,66 @@ function openProduct(id) {
   renderProduct();
   showDialog($("#product-dialog"));
 }
+const choice = (name, value, label, copy, checked) =>
+  `<label class="choice"><input type="radio" name="${name}" value="${value}" ${checked ? "checked" : ""} /><span><strong>${label}</strong>${copy ? `<small>${copy}</small>` : ""}</span></label>`;
+function buyMethodSwitch() {
+  return `<div class="buy-method" role="group" aria-label="${escape(t("buyMethod"))}"><p>${t("buyMethod")}</p>${[
+    ["np", "methodNp", "methodNpCopy"],
+    ["olx", "methodOlx", "methodOlxCopy"],
+  ]
+    .map(
+      ([value, label, copy]) =>
+        `<button type="button" class="buy-method-option ${state.buyMethod === value ? "selected" : ""}" data-action="buy-method" data-value="${value}" aria-pressed="${state.buyMethod === value}"><strong>${t(label)}</strong><small>${t(copy)}</small></button>`,
+    )
+    .join("")}</div>`;
+}
+function olxCheckout() {
+  const rows = state.cart
+    .map((item) => {
+      const p = productById(item.id);
+      return `<li class="olx-item"><img src="${photo(p)}" alt="" width="56" height="56" loading="lazy"/><span><strong>${escape(p.name)}</strong><small>${t("sizeLabel")}: ${escape(item.size)} · ${item.quantity} ${t("qtyShort")}</small></span><button type="button" class="button outline" data-action="olx" data-id="${p.id}">${t("buyOnOlx")} ${icon("arrow")}</button></li>`;
+    })
+    .join("");
+  return `<div class="olx-checkout"><p>${t("olxListCopy")}</p><ul class="olx-list">${rows}</ul><p class="product-note">${t("buyOlxNote")}</p></div>`;
+}
+function npCheckoutForm(a) {
+  const d = state.checkoutDraft;
+  const saved = String(a?.branch || "");
+  const type = d.deliveryType || (/поштомат|почтомат|locker/i.test(saved) ? "locker" : "branch");
+  const value = (key, fallback = "") => escape(d[key] ?? fallback);
+  const input = (name, label, attrs, fallback) =>
+    `<label class="form-field">${label}<input name="${name}" ${attrs} value="${value(name, fallback)}" /></label>`;
+  return `<form id="checkout-form" class="checkout-form" novalidate><fieldset class="checkout-section"><legend>${t("recipientTitle")}</legend><div class="form-row">${input("lastName", t("lastName"), 'autocomplete="family-name" required minlength="2" maxlength="50"')}${input("firstName", t("firstName"), 'autocomplete="given-name" required minlength="2" maxlength="50"', a?.name)}</div>${input("phone", t("phone"), 'type="tel" autocomplete="tel" inputmode="tel" required maxlength="20" placeholder="+380"', a?.phone)}</fieldset><fieldset class="checkout-section"><legend>${t("deliveryTitle")}</legend>${input("city", t("city"), 'list="np-cities" autocomplete="address-level2" required minlength="2" maxlength="80"', a?.city)}<datalist id="np-cities">${npDemoCities.map((city) => `<option value="${escape(city)}"></option>`).join("")}</datalist><div class="choice-row">${choice("deliveryType", "branch", t("deliveryBranch"), "", type === "branch")}${choice("deliveryType", "locker", t("deliveryLocker"), "", type === "locker")}</div><label class="form-field"><span class="point-label">${t(type === "locker" ? "pointLocker" : "pointBranch")}</span><input name="point" inputmode="numeric" required maxlength="6" value="${value("point", saved.match(/\d+/)?.[0] || "")}" /></label><p class="checkout-note">${t("deliveryCostNote")}</p></fieldset><fieldset class="checkout-section"><legend>${t("paymentTitle")}</legend>${choice("payment", "cod", t("paymentCod"), t("paymentCodCopy"), (d.payment || "cod") === "cod")}${choice("payment", "card", t("paymentCard"), t("paymentCardCopy"), d.payment === "card")}</fieldset><fieldset class="checkout-section"><legend>${t("confirmTitle")}</legend><div class="choice-row">${choice("confirm", "viber", "Viber", "", (d.confirm || "viber") === "viber")}${choice("confirm", "telegram", "Telegram", "", d.confirm === "telegram")}</div></fieldset><label class="form-field">${t("commentLabel")}<textarea name="comment" rows="2" maxlength="500" placeholder="${escape(t("commentPlaceholder"))}">${value("comment")}</textarea></label>${a ? `<label class="check-field"><input type="checkbox" name="saveProfile" checked />${t("saveToProfile")}</label>` : `<p class="checkout-note">${t("guestDataNote")}</p>`}${formError()}<div class="cart-total"><span>${t("total")}</span><strong>${money(cartTotal(state.cart))}</strong></div><button class="button dark" type="submit">${t("submitOrder")} ${icon("arrow")}</button></form>`;
+}
+function successContent() {
+  const order = state.lastOrder;
+  const done = `<button class="button dark" data-action="close">${t("continueShopping")} ${icon("arrow")}</button>`;
+  if (!order)
+    return `<div class="empty-state success-state">${icon("check")}<h2>${t("successTitle")}</h2><p>${t("successCopy")}</p>${done}</div>`;
+  const confirm = t("orderConfirmCopy")
+    .replace("{channel}", order.confirm === "telegram" ? "Telegram" : "Viber")
+    .replace("{phone}", order.customer.phone);
+  return `<div class="empty-state success-state">${icon("check")}<h2>${t("successTitle")}</h2><p><strong>${t("orderNumber")} ${escape(order.number)}</strong></p><p>${escape(confirm)}</p>${order.payment === "card" ? `<p>${t("orderCardCopy")}</p>` : ""}${order.accountId ? `<p>${t("orderAccountCopy")}</p><a href="#account" class="button outline" data-action="close">${t("ordersTitle")} ${icon("arrow")}</a>` : ""}<p class="product-note">${t("successCopy")}</p>${done}</div>`;
+}
+function openOlx(id) {
+  const p = productById(id);
+  if (!p) return;
+  track("olx_click", { id });
+  if (p.olxUrl) window.open(p.olxUrl, "_blank", "noopener");
+  else info("olxDemo");
+}
 function renderCart() {
   const dialog = $("#cart-dialog");
   dialog.setAttribute("aria-label", t("cart"));
   let content;
   const a = state.account;
   if (state.cartStep === "success")
-    content = `<div class="empty-state success-state">${icon("check")}<h2>${t("successTitle")}</h2>${state.lastOrder ? `<p><strong>${t("orderNumber")} ${escape(state.lastOrder)}</strong></p><p>${t("orderSavedCopy")}</p><a href="#account" class="button outline" data-action="close">${t("ordersTitle")} ${icon("arrow")}</a>` : `<p>${t("successCopy")}</p>`}<button class="button dark" data-action="close">${t("continueShopping")} ${icon("arrow")}</button></div>`;
+    content = successContent();
   else if (state.cartStep === "checkout" && state.cart.length) {
     const who = a
       ? `<p class="checkout-account">${icon("user")}<span>${t("checkoutSignedIn")} <strong>${escape(a.email)}</strong></span></p>`
       : `<div class="quick-buy"><strong>${t("quickBuyTitle")}</strong><p><button type="button" class="text-button" data-action="auth" data-return="checkout">${t("signIn")}</button>, ${t("quickBuyCopy")}</p></div>`;
-    content = `<button class="subtle-button back-button" data-action="cart-back">← ${t("back")}</button><div class="checkout-intro"><h2>${t("checkoutTitle")}</h2><p>${t("checkoutCopy")}</p>${who}</div><form id="checkout-form"><label>${t("name")}<input name="name" autocomplete="given-name" required minlength="2" maxlength="80" value="${escape(a?.name || "")}" /></label><label>${t("phone")}<input name="phone" type="tel" autocomplete="tel" inputmode="tel" required minlength="9" maxlength="20" placeholder="+380" value="${escape(a?.phone || "")}" /></label><label>${t("city")}<input name="city" autocomplete="address-level2" required minlength="2" maxlength="80" value="${escape(a?.city || "")}" /></label><label>${t("branch")}<input name="branch" required maxlength="120" value="${escape(a?.branch || "")}" /></label>${a ? `<label class="check-field"><input type="checkbox" name="saveProfile" checked />${t("saveToProfile")}</label>` : ""}<div class="cart-total"><span>${t("total")}</span><strong>${money(cartTotal(state.cart))}</strong></div><button class="button dark" type="submit">${t("submitOrder")} ${icon("arrow")}</button></form>`;
+    content = `<button class="subtle-button back-button" data-action="cart-back">← ${t("back")}</button><div class="checkout-intro"><h2>${t("checkoutTitle")}</h2><p>${t("checkoutCopy")}</p>${state.buyMethod === "np" ? who : ""}</div>${buyMethodSwitch()}${state.buyMethod === "olx" ? olxCheckout() : npCheckoutForm(a)}`;
   }
   else if (!state.cart.length)
     content = `<div class="empty-state">${icon("bag")}<h2>${t("emptyCart")}</h2><p>${t("emptyCartCopy")}</p><button class="button dark" data-action="shop">${t("backCatalog")} ${icon("arrow")}</button></div>`;
@@ -485,6 +553,12 @@ document.addEventListener("click", (event) => {
     location.hash = "catalog";
   }
   if (action === "info") info(button.dataset.topic);
+  if (action === "olx") openOlx(button.dataset.id);
+  if (action === "buy-method" && ["np", "olx"].includes(button.dataset.value)) {
+    state.buyMethod = button.dataset.value;
+    renderCart();
+    $(`[data-action="buy-method"][data-value="${state.buyMethod}"]`)?.focus();
+  }
   if (action === "auth") {
     state.menu = false;
     openAuth(button.dataset.view || "signin", button.dataset.return || null);
@@ -509,6 +583,15 @@ document.addEventListener("click", (event) => {
     $("#main").focus();
   }
 });
+document.addEventListener("input", (event) => {
+  const form = event.target.closest?.("#checkout-form");
+  if (!form) return;
+  state.checkoutDraft = Object.fromEntries(new FormData(form));
+  if (event.target.name === "deliveryType")
+    form.querySelector(".point-label").textContent = t(
+      event.target.value === "locker" ? "pointLocker" : "pointBranch",
+    );
+});
 document.addEventListener("submit", (event) => {
   if (event.target.matches(".search-form")) {
     event.preventDefault();
@@ -524,26 +607,39 @@ document.addEventListener("submit", (event) => {
   }
   if (event.target.id === "checkout-form") {
     event.preventDefault();
-    // Personal details deliberately stay in the form; only items and total reach the activity log.
-    track("order", {
-      total: cartTotal(state.cart),
-      items: state.cart.map(({ id, quantity }) => ({ id, quantity })),
+    const form = event.target;
+    const data = Object.fromEntries(new FormData(form));
+    // Guests get no profile: their delivery details are stored only inside the order,
+    // because the seller needs them to ship the parcel.
+    const result = orders.create({
+      ...data,
+      items: state.cart.map((item) => ({ ...item, price: productById(item.id).price })),
+      accountId: state.account?.id ?? null,
     });
-    // Guests buy without an account and nothing personal is saved. Signed-in
-    // customers keep the order (and, if they choose, the delivery details).
-    state.lastOrder = null;
-    if (state.account) {
-      const data = Object.fromEntries(new FormData(event.target));
-      if (data.saveProfile) accounts.updateProfile(state.account.id, data);
-      const result = accounts.addOrder(state.account.id, {
-        items: state.cart.map((item) => ({ ...item, price: productById(item.id).price })),
-        total: cartTotal(state.cart),
-        delivery: data,
-      });
-      if (result.ok) state.lastOrder = result.order.number;
-      state.account = accounts.current();
-      render();
+    if (!result.ok) {
+      showFormError(form, result.error);
+      const target = result.field && form.elements[result.field];
+      (target instanceof RadioNodeList ? target[0] : target)?.focus();
+      return;
     }
+    const order = result.order;
+    track("order", {
+      total: order.total,
+      items: order.items.map(({ id, quantity }) => ({ id, quantity })),
+    });
+    if (state.account && data.saveProfile)
+      accounts.updateProfile(state.account.id, {
+        name: state.account.name,
+        phone: order.customer.phone,
+        city: order.delivery.city,
+        branch: deliveryLabel({ ...order.delivery, city: "" }).replace(/^, /, ""),
+      });
+    state.account = accounts.current();
+    state.lastOrder = order;
+    state.cart = [];
+    save("cart");
+    state.checkoutDraft = {};
+    render();
     state.cartStep = "success";
     renderCart();
     $('#cart-dialog [data-action="close"]').focus();
