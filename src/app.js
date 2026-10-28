@@ -1,4 +1,4 @@
-import { products, productById } from "./data.js";
+import { products, productById, productImages } from "./data.js";
 import { dictionaries } from "./i18n.js";
 import { clothingMarkup, animateClothing, cancelClothingAnimations, resetClothingAnimations, syncClothingState } from "./playful-clothes.js";
 import {
@@ -7,6 +7,9 @@ import {
   cartCount,
   cartTotal,
   addToCart,
+  relatedProducts,
+  sizeChart,
+  suggestShoeSize,
 } from "./model.js";
 import { track } from "./analytics.js";
 import { createAccountStore } from "./accounts.js";
@@ -81,6 +84,10 @@ const paths = {
   shirt: '<path d="m8 3-6 4 3 5 3-2v11h8V10l3 2 3-5-6-4c-2 3-6 3-8 0Z"/>',
   cap: '<path d="M4 14v-3a8 8 0 0 1 16 0v3H4Zm0 0-2 4h16c3 0 4-2 2-4M12 3v11"/>',
   check: '<path d="m5 12 4 4L19 6"/>',
+  share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/>',
+  truck: '<path d="M3 6h11v10H3zM14 9h4l3 3v4h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>',
+  card: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h4"/>',
+  shield: '<path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   minus: '<path d="M5 12h14"/>',
   pin: '<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>',
@@ -112,10 +119,12 @@ function toast(message) {
   );
 }
 function route() {
-  const [page = "", query = ""] = location.hash.slice(1).split("?");
+  const [path = "", query = ""] = location.hash.slice(1).split("?");
+  const [page, productId = ""] = path.split("/");
   const params = new URLSearchParams(query);
   return {
-    page: ["catalog", "favorites", "account"].includes(page) ? page : "home",
+    page: ["catalog", "favorites", "account", "product"].includes(page) ? page : "home",
+    productId: page === "product" ? decodeURIComponent(productId) : null,
     category: ["sneakers", "clothing", "accessories"].includes(
       params.get("category"),
     )
@@ -139,14 +148,14 @@ function navigateFilters(changes) {
   if (current.query) params.set("q", current.query);
   if (current.sale) params.set("sale", "1");
   if (current.sort !== "featured") params.set("sort", current.sort);
-  location.hash = `${current.page === "home" ? "catalog" : current.page}${params.size ? "?" + params.toString() : ""}`;
+  location.hash = `${current.page === "favorites" ? "favorites" : "catalog"}${params.size ? "?" + params.toString() : ""}`;
 }
 function favoriteButton(id) {
   const active = state.favorites.includes(id);
   return `<button type="button" class="favorite-button ${active ? "is-favorite" : ""}" data-action="favorite" data-id="${id}" aria-pressed="${active}" aria-label="${escape(t(active ? "removeFavorite" : "addFavorite"))}: ${escape(productById(id).name)}">${icon("heart")}</button>`;
 }
 function productCard(product, index = 0) {
-  return `<article class="product-card" style="--order:${index}"><div class="product-visual"><button class="product-open" data-action="product" data-id="${product.id}" aria-label="${escape(product.name)}"><img src="${photo(product)}" alt="${escape(product.name)} — ${escape(t(product.color))}" loading="lazy" width="600" height="600" /></button><span class="product-tag">${t(product.tag === "sale" ? "saleTag" : product.tag)}</span>${favoriteButton(product.id)}<span class="quick-view" aria-hidden="true">${icon("plus")}</span></div><div class="product-meta"><div><p class="product-brand">${product.brand}</p><button class="product-name" data-action="product" data-id="${product.id}">${product.name}</button><p class="product-kind">${t(product.type)} · ${t(product.color)}</p></div><div class="price"><span>${money(product.price)}</span>${product.oldPrice ? `<del>${money(product.oldPrice)}</del>` : ""}</div></div></article>`;
+  return `<article class="product-card" style="--order:${index}"><div class="product-visual"><a class="product-open" href="#product/${product.id}" aria-label="${escape(product.name)}"><img src="${photo(product)}" alt="${escape(product.name)} — ${escape(t(product.color))}" loading="lazy" width="600" height="600" /></a><span class="product-tag">${t(product.tag === "sale" ? "saleTag" : product.tag)}</span>${favoriteButton(product.id)}<span class="quick-view" aria-hidden="true">${icon("plus")}</span></div><div class="product-meta"><div><p class="product-brand">${product.brand}</p><a class="product-name" href="#product/${product.id}">${product.name}</a><p class="product-kind">${t(product.type)} · ${t(product.color)}</p></div><div class="price"><span>${money(product.price)}</span>${product.oldPrice ? `<del>${money(product.oldPrice)}</del>` : ""}</div></div></article>`;
 }
 function searchForm(value = "", compact = false) {
   return `<form class="search-form ${compact ? "compact-search" : ""}" role="search">${icon("search")}<input type="search" name="search" value="${escape(value)}" placeholder="${escape(t("searchPlaceholder"))}" aria-label="${escape(t("search"))}" maxlength="100"/><button type="submit" aria-label="${escape(t("search"))}">${icon("arrow")}</button></form>`;
@@ -281,10 +290,11 @@ function render() {
   else cancelClothingAnimations();
   renderedPage = page;
   document.documentElement.lang = state.language;
-  document.title = t("pageTitle");
+  const product = page === "product" ? productById(route().productId) : null;
+  document.title = product ? `${product.name} — BuyDUCK` : t("pageTitle");
   $(".skip-link").textContent = t("skip");
   $("#app").innerHTML =
-    `${header()}${page === "home" ? home() : page === "account" ? account() : catalog()}${footer()}`;
+    `${header()}${page === "home" ? home() : page === "account" ? account() : page === "product" ? productPage() : catalog()}${footer()}`;
   syncClothingState();
 }
 function showDialog(dialog) {
@@ -296,19 +306,119 @@ function closeDialog(dialog) {
   if (!document.querySelector("dialog[open]"))
     document.body.classList.remove("modal-open");
 }
-function renderProduct() {
-  const p = productById(state.product);
-  if (!p) return;
-  $("#product-dialog").setAttribute("aria-label", p.name);
-  $("#product-dialog").innerHTML =
-    `<div class="dialog-header"><span>BuyDUCK / ${t(p.type)}</span>${iconButton("close", "close", t("close"))}</div><div class="product-detail"><div class="detail-image"><img src="${photo(p)}" alt="${escape(p.name)}" width="900" height="900"/>${favoriteButton(p.id)}</div><div class="detail-content"><p class="eyebrow">${p.brand}</p><h2>${p.name}</h2><p class="detail-kind">${t(p.type)} · ${t(p.color)}</p><div class="detail-price">${money(p.price)} ${p.oldPrice ? `<del>${money(p.oldPrice)}</del>` : ""}</div><p>${t("description")}</p><div class="size-heading"><strong>${t("size")}</strong><button class="subtle-button" data-action="size-guide">${t("sizeGuide")}</button></div><div class="sizes" role="group" aria-label="${t("size")}">${p.sizes.map((size) => `<button data-action="size" data-value="${size}" class="size-button ${state.size === size ? "selected" : ""}" aria-pressed="${state.size === size}">${size}</button>`).join("")}</div><p class="size-guide-copy" hidden>${t("sizeGuideCopy")}</p><button class="button dark add-to-cart" data-action="add-cart" ${!state.size ? "disabled" : ""}>${t(state.size ? "addCart" : "chooseSize")} ${icon("bag")}</button><button type="button" class="button outline olx-buy" data-action="olx" data-id="${p.id}">${t("buyOlx")} ${icon("arrow")}</button><p class="product-note olx-note">${t("buyOlxNote")}</p><p class="product-note">${t("productNote")}</p></div></div>`;
-}
+const capital = (value) => value[0].toUpperCase() + value.slice(1);
+const breadcrumbs = (items) =>
+  `<nav class="breadcrumbs" aria-label="${escape(t("catalog"))}">${items.join(icon("chevron"))}</nav>`;
+// Product page at #product/<id>; hero cards and other buttons with data-action="product" lead here.
 function openProduct(id) {
-  track("product_view", { id });
-  state.product = id;
+  if (productById(id)) location.hash = `product/${id}`;
+}
+function enterRoute() {
+  const r = route();
+  if (r.page !== "product" || r.productId === state.product) return;
+  state.product = r.productId;
   state.size = null;
-  renderProduct();
-  showDialog($("#product-dialog"));
+  state.photo = 0;
+  if (productById(r.productId)) track("product_view", { id: r.productId });
+}
+function renderKeepingScroll() {
+  const scroll = window.scrollY;
+  render();
+  window.scrollTo(0, scroll);
+}
+function productPage() {
+  const p = productById(route().productId);
+  if (!p)
+    return `<main id="main" class="product-page content-wrap" tabindex="-1">${breadcrumbs([`<a href="#home">${t("home")}</a>`, `<span>${t("productNotFound")}</span>`])}<div class="empty-state">${icon("search")}<h1>${t("productNotFound")}</h1><p>${t("productNotFoundCopy")}</p><a href="#catalog" class="button dark">${t("backCatalog")} ${icon("arrow")}</a></div></main>`;
+  const images = productImages(p);
+  const index = Math.min(state.photo || 0, images.length - 1);
+  const description = p.description?.[state.language] || p.description?.uk || t("description");
+  const chart = sizeChart(p);
+  const thumbs =
+    images.length > 1
+      ? `<div class="gallery-thumbs">${images
+          .map(
+            (image, i) =>
+              `<button type="button" class="gallery-thumb ${i === index ? "selected" : ""}" data-action="photo" data-index="${i}" aria-pressed="${i === index}" aria-label="${escape(t("photoOf").replace("{n}", i + 1).replace("{total}", images.length))}"><img src="assets/products/${image}" alt="" width="120" height="120" loading="lazy"/></button>`,
+          )
+          .join("")}</div>`
+      : "";
+  const fit = p.fit
+    ? `<p class="fit-note">${icon("check")}<span><strong>${t("fitLabel")}:</strong> ${t(`fit${capital(p.fit)}`)}</span></p>`
+    : "";
+  const specs = [
+    ...(p.fit ? [[t("fitLabel"), t(`fit${capital(p.fit)}`)]] : []),
+    ...Object.entries(p.details || {}).map(([label, value]) => [t(`detail${capital(label)}`), t(value)]),
+    [t("articleLabel"), p.article],
+  ]
+    .map(([label, value]) => `<div><dt>${escape(label)}</dt><dd>${escape(value)}</dd></div>`)
+    .join("");
+  const sizes = p.sizes
+    .map(
+      (size) =>
+        `<button data-action="size" data-value="${size}" class="size-button ${state.size === size ? "selected" : ""}" aria-pressed="${state.size === size}">${size}</button>`,
+    )
+    .join("");
+  return `<main id="main" class="product-page content-wrap" tabindex="-1">${breadcrumbs([
+    `<a href="#home">${t("home")}</a>`,
+    `<a href="#catalog">${t("catalog")}</a>`,
+    `<a href="#catalog?category=${p.type}">${t(p.type)}</a>`,
+    `<span aria-current="page">${escape(p.name)}</span>`,
+  ])}<div class="product-layout"><section class="product-gallery" aria-label="${escape(p.name)}"><div class="gallery-main"><img src="assets/products/${images[index]}" alt="${escape(p.name)} — ${escape(t(p.color))}" width="900" height="900" fetchpriority="high"/><span class="product-tag">${t(p.tag === "sale" ? "saleTag" : p.tag)}</span>${favoriteButton(p.id)}</div>${thumbs}</section><div class="product-info"><p class="eyebrow">${escape(p.brand)}</p><h1>${escape(p.name)}</h1><p class="detail-kind">${t(p.type)} · ${t(p.color)} · ${t("articleLabel")} ${escape(p.article)}</p><div class="detail-price">${money(p.price)} ${p.oldPrice ? `<del>${money(p.oldPrice)}</del>` : ""}</div><p class="product-lead">${escape(description)}</p><div class="size-heading"><strong>${t("size")}</strong>${chart ? `<button type="button" class="subtle-button" data-action="size-chart">${t("sizeChart")}</button>` : ""}</div><div class="sizes" role="group" aria-label="${t("size")}">${sizes}</div>${fit}<button class="button dark add-to-cart" data-action="add-cart" ${!state.size ? "disabled" : ""}>${t(state.size ? "addCart" : "chooseSize")} ${icon("bag")}</button><button type="button" class="button outline olx-buy" data-action="olx" data-id="${p.id}">${t("buyOlx")} ${icon("arrow")}</button><p class="product-note olx-note">${t("buyOlxNote")}</p><ul class="product-perks"><li>${icon("truck")}${t("perkDelivery")}</li><li>${icon("card")}${t("perkPayment")}</li><li>${icon("shield")}${t("perkOlx")}</li></ul><button type="button" class="subtle-button share-button" data-action="share" data-id="${p.id}">${icon("share")}${t("share")}</button><p class="product-note">${t("productNote")}</p></div></div><section class="product-specs" aria-labelledby="specs-title"><h2 id="specs-title">${t("specsTitle")}</h2><dl>${specs}</dl></section><section class="related-products" aria-labelledby="related-title"><h2 id="related-title">${t("relatedTitle")}</h2><div class="product-grid">${relatedProducts(p).map(productCard).join("")}</div></section></main>`;
+}
+function openSizeChart() {
+  const p = productById(state.product);
+  const chart = sizeChart(p);
+  if (!chart) return;
+  const head =
+    chart.kind === "shoes"
+      ? [t("sizeLabel"), t("sizeChartInsole")]
+      : [t("sizeLabel"), t("sizeChartChest"), t("sizeChartWaist")];
+  const rows = chart.rows
+    .map((row) =>
+      chart.kind === "shoes"
+        ? `<tr><th scope="row">${row.size}</th><td>${new Intl.NumberFormat(state.language === "en" ? "en-GB" : "uk-UA").format(row.cm)}</td></tr>`
+        : `<tr><th scope="row">${row.size}</th><td>${row.chest}</td><td>${row.waist}</td></tr>`,
+    )
+    .join("");
+  const finder =
+    chart.kind === "shoes"
+      ? `<form id="foot-form" class="foot-form" novalidate><label class="form-field">${t("footLength")}<input name="foot" inputmode="decimal" maxlength="5" placeholder="25,5" required /></label><button class="button dark" type="submit">${t("footFind")}</button><p class="foot-result" role="status"></p></form><p class="size-howto">${t("sizeHowTo")}</p>`
+      : "";
+  const dialog = $("#info-dialog");
+  dialog.setAttribute("aria-label", t("sizeChart"));
+  dialog.innerHTML = `<div class="dialog-header"><h2>${t("sizeChart")}</h2>${iconButton("close", "close", t("close"))}</div><div class="size-chart"><p class="detail-kind">${escape(p.name)}${p.fit ? ` · ${t(`fit${capital(p.fit)}`)}` : ""}</p><table><thead><tr>${head.map((label) => `<th scope="col">${label}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table>${finder}<p class="product-note">${t("sizeGuideCopy")}</p></div>`;
+  showDialog(dialog);
+  dialog.querySelector("input, .icon-button")?.focus();
+}
+async function shareProduct(id) {
+  const p = productById(id);
+  if (!p) return;
+  // Share pages in /p/ carry the link preview (photo, name, price) for messengers.
+  const url = new URL(`p/${id}.html`, location.href.split("#")[0]).href;
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: `${p.name} — BuyDUCK`, url });
+      return;
+    }
+  } catch (error) {
+    if (error?.name === "AbortError") return;
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    toast(t("linkCopied"));
+  } catch {
+    const field = document.createElement("input");
+    field.value = url;
+    document.body.append(field);
+    field.select();
+    let copied = false;
+    try {
+      copied = document.execCommand("copy");
+    } catch {}
+    field.remove();
+    toast(t(copied ? "linkCopied" : "linkCopyFailed"));
+  }
 }
 const choice = (name, value, label, copy, checked) =>
   `<label class="choice"><input type="radio" name="${name}" value="${value}" ${checked ? "checked" : ""} /><span><strong>${label}</strong>${copy ? `<small>${copy}</small>` : ""}</span></label>`;
@@ -458,13 +568,9 @@ function updateFavorite(id) {
   const scroll = window.scrollY;
   render();
   window.scrollTo(0, scroll);
-  if ($("#product-dialog").open) {
-    renderProduct();
-    $("#product-dialog .favorite-button").focus();
-  } else
-    $(`[data-action="favorite"][data-id="${id}"]`)?.focus({
-      preventScroll: true,
-    });
+  $(`[data-action="favorite"][data-id="${id}"]`)?.focus({
+    preventScroll: true,
+  });
 }
 function info(topic) {
   $("#info-dialog").setAttribute("aria-label", t(topic));
@@ -494,14 +600,22 @@ document.addEventListener("click", (event) => {
   }
   if (action === "size") {
     state.size = button.dataset.value;
-    renderProduct();
-    $(`.size-button[data-value="${state.size}"]`).focus();
+    renderKeepingScroll();
+    $(`.size-button[data-value="${state.size}"]`)?.focus();
   }
-  if (action === "size-guide") {
-    const copy = $(".size-guide-copy");
-    copy.hidden = !copy.hidden;
-    button.setAttribute("aria-expanded", String(!copy.hidden));
+  if (action === "size-chart") openSizeChart();
+  if (action === "pick-size") {
+    state.size = button.dataset.value;
+    closeDialog($("#info-dialog"));
+    renderKeepingScroll();
+    $(`.size-button[data-value="${state.size}"]`)?.focus();
   }
+  if (action === "photo") {
+    state.photo = Number(button.dataset.index) || 0;
+    renderKeepingScroll();
+    $(`[data-action="photo"][data-index="${state.photo}"]`)?.focus();
+  }
+  if (action === "share") shareProduct(button.dataset.id);
   if (action === "add-cart") {
     if (!state.size) return;
     state.cart = addToCart(state.cart, state.product, state.size);
@@ -593,6 +707,16 @@ document.addEventListener("input", (event) => {
     );
 });
 document.addEventListener("submit", (event) => {
+  if (event.target.id === "foot-form") {
+    event.preventDefault();
+    const field = event.target.elements.foot;
+    const foot = Number(String(field.value).replace(",", "."));
+    const size = suggestShoeSize(productById(state.product), foot);
+    event.target.querySelector(".foot-result").innerHTML = size
+      ? `${escape(t("footSuggest").replace("{size}", size))} <button type="button" class="text-button" data-action="pick-size" data-value="${escape(size)}">${escape(t("chooseSuggested").replace("{size}", size))}</button>`
+      : escape(t("footNoSize"));
+    return;
+  }
   if (event.target.matches(".search-form")) {
     event.preventDefault();
     const query = new FormData(event.target).get("search").toString().trim();
@@ -712,7 +836,6 @@ document.addEventListener("change", (event) => {
     state.language = event.target.value;
     save("language");
     render();
-    if ($("#product-dialog").open) renderProduct();
     if ($("#cart-dialog").open) renderCart();
     if ($("#auth-dialog").open) renderAuth();
     $("#language").focus();
@@ -731,9 +854,7 @@ for (const dialog of document.querySelectorAll("dialog")) {
             ? $("#cart-dialog").open
               ? $("#cart-dialog [data-action=close]")
               : $(".header-account") || $("#main")
-          : dialog.id === "product-dialog"
-            ? $(`[data-action="product"][data-id="${state.product}"]`)
-            : $("#main");
+          : $("#main");
       target?.focus({ preventScroll: true });
     }
   });
@@ -759,6 +880,7 @@ window.addEventListener("storage", (event) => {
 });
 window.addEventListener("hashchange", () => {
   state.menu = false;
+  enterRoute();
   render();
   track("page_view", { page: route().page });
   if (location.hash === "#arrivals") {
@@ -768,6 +890,7 @@ window.addEventListener("hashchange", () => {
   window.scrollTo({ top: 0, behavior: "instant" });
   $("#main").focus({ preventScroll: true });
 });
+enterRoute();
 render();
 track("page_view", { page: route().page });
 // Owner-only layout editor for the hero cards: http://127.0.0.1:5173/?edit-layout#home

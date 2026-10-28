@@ -33,26 +33,30 @@ async (browserPage) => {
 
     // Guest quick checkout keeps working and saves nothing personal.
     const addCourt = async () => {
-      await page.locator('.product-grid [data-action="product"][data-id="court"]').first().click();
+      await page.locator('.product-grid a.product-open[href="#product/court"]').first().click();
       await page.locator('.size-button[data-value="40"]').click();
       await page.locator('[data-action="add-cart"]').click();
-      await page.keyboard.press("Escape");
+      await page.goBack();
     };
     await addCourt();
     await page.locator(".cart-trigger").click();
     await page.locator('[data-action="checkout"]').click();
     check(await page.locator(".quick-buy").isVisible() && await page.locator('.quick-buy [data-action="auth"]').isVisible(), "Guests see quick checkout with an optional sign-in link");
-    await page.locator('#checkout-form [name="name"]').fill("Guest Buyer");
+    await page.locator('#checkout-form [name="lastName"]').fill("Buyer");
+    await page.locator('#checkout-form [name="firstName"]').fill("Guest");
     await page.locator('#checkout-form [name="phone"]').fill("+380501234567");
     await page.locator('#checkout-form [name="city"]').fill("Kyiv");
-    await page.locator('#checkout-form [name="branch"]').fill("1");
+    await page.locator('#checkout-form [name="point"]').fill("1");
     await page.locator('#checkout-form button[type="submit"]').click();
     check(await page.locator(".success-state").count() === 1 && await page.locator('.success-state a[href="#account"]').count() === 0, "Guest quick checkout completes without an account");
     const guestData = await stored();
-    check(!guestData.includes("Guest Buyer") && !guestData.includes("+380501234567") && !guestData.includes("buyduck:accounts"), "Guest checkout stores no personal data and no account");
+    // Guests get no account; their delivery details live only inside the order.
+    check(!guestData.includes("buyduck:accounts") && await page.evaluate(() => Object.entries(localStorage).every(([k, v]) => k === "buyduck:orders" || !v.includes("+380501234567"))), "Guest checkout creates no account and keeps details only in the order");
     await page.keyboard.press("Escape");
 
     // Sign up from the checkout, with validation, then continue to a prefilled form.
+    // The guest order emptied the cart, so add the item again first.
+    await addCourt();
     await page.locator(".cart-trigger").click();
     await page.locator('[data-action="checkout"]').click();
     await page.locator('.quick-buy [data-action="auth"]').click();
@@ -73,12 +77,13 @@ async (browserPage) => {
     await signup.locator('button[type="submit"]').click();
     await page.locator(".checkout-account").waitFor();
     check(!await auth.evaluate(d => d.open) && await page.locator(".checkout-account").textContent().then(text => text.includes(email)), "Sign-up returns to checkout as the new customer");
-    check(await page.locator('#checkout-form [name="name"]').inputValue() === "Olena", "Checkout is prefilled from the account");
+    check(await page.locator('#checkout-form [name="firstName"]').inputValue() === "Olena", "Checkout is prefilled from the account");
     const accountData = await stored();
     check(accountData.includes("buyduck:accounts") && !accountData.includes(password) && accountData.includes("pbkdf2-sha256"), "Password is stored only as a PBKDF2 hash");
+    await page.locator('#checkout-form [name="lastName"]').fill("Koval");
     await page.locator('#checkout-form [name="phone"]').fill("+380671112233");
     await page.locator('#checkout-form [name="city"]').fill("Lviv");
-    await page.locator('#checkout-form [name="branch"]').fill("7");
+    await page.locator('#checkout-form [name="point"]').fill("7");
     await page.locator('#checkout-form button[type="submit"]').click();
     const number = (await page.locator(".success-state strong").textContent()).match(/BD-\d+/)?.[0];
     check(Boolean(number) && await page.locator('.success-state a[href="#account"]').isVisible(), "Signed-in order gets a number and a link to the account");

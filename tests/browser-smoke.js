@@ -12,14 +12,16 @@ async (page) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 1440, height: 1000 });
   check(await page.locator('html').getAttribute('lang') === 'uk', 'Ukrainian default');
-  await page.locator('.product-grid [data-action="product"][data-id="court"]').first().click();
-  check(await page.locator('#product-dialog').evaluate(d => d.open), 'Product dialog opens');
+  await page.locator('.product-grid a.product-open[href="#product/court"]').first().click();
+  await page.waitForFunction(() => location.hash === '#product/court');
+  check(await page.locator('.product-page h1').textContent() === 'Court Essential', 'Product page opens at its own link');
   check(await page.locator('[data-action="add-cart"]').isDisabled(), 'Size required before adding');
   await page.locator('.size-button[data-value="40"]').click();
   await page.locator('[data-action="add-cart"]').click();
   check(await page.locator('.header .cart-count').textContent() === '1', 'Adding selected size updates cart');
-  await page.keyboard.press('Escape');
-  check(!(await page.locator('#product-dialog').evaluate(d => d.open)), 'Escape closes product dialog');
+  await page.goBack();
+  await page.locator('.product-grid').waitFor();
+  check(await page.evaluate(() => !location.hash.startsWith('#product')), 'Back returns from the product page');
   await page.locator('.product-grid [data-action="favorite"][data-id="court"]').click();
   check(await page.locator('.product-grid [data-action="favorite"][data-id="court"]').getAttribute('aria-pressed') === 'true', 'Wishlist toggles on');
   await page.locator('#language').selectOption('ru');
@@ -43,6 +45,7 @@ async (page) => {
   await page.locator('[name="point"]').fill('1');
   await page.locator('#checkout-form button[type="submit"]').click();
   check(await page.locator('.success-state').count() === 1, 'Nova Poshta checkout completes');
+  check(await page.locator('.header .cart-count').textContent() === '0', 'Cart empties after the order');
   // Guests get no profile: delivery details live only inside the order the seller ships.
   check(await page.evaluate(() => Object.entries(localStorage).every(([k, v]) => k === 'buyduck:orders' || !v.includes('+380501234567'))), 'Guest details stored only in the order');
   await page.keyboard.press('Escape');
@@ -70,6 +73,10 @@ async (page) => {
   await page.goto('http://127.0.0.1:5173/#catalog?q=%3Cscript%3Ebad%3C%2Fscript%3E');
   await page.locator('main .empty-state').waitFor();
   check(await page.locator('main .empty-state').count() === 1, 'Search safely escaped; no-result state');
+  // The cart was emptied by the order; add an item again to test removal.
+  await page.goto('http://127.0.0.1:5173/#product/court');
+  await page.locator('.size-button[data-value="40"]').click();
+  await page.locator('[data-action="add-cart"]').click();
   await page.locator('.cart-trigger').click();
   await page.locator('[data-action="remove"]').click();
   check(await page.locator('#cart-dialog .empty-state').count() === 1, 'Removing last item shows empty bag');
@@ -87,8 +94,8 @@ async (page) => {
   check(await page.locator('.product-card').count() === 7, 'Women filter includes unisex');
   check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Mobile catalog fits viewport');
   await page.locator('.product-open').first().click();
-  check(await page.locator('#product-dialog').evaluate(d => d.scrollWidth <= d.clientWidth), 'Mobile product dialog fits viewport');
-  await page.keyboard.press('Escape');
+  await page.locator('.product-page').waitFor();
+  check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Mobile product page fits viewport');
   await page.goto('http://127.0.0.1:5173/#home');
   await page.locator('.hero').waitFor();
   for (const width of [320, 375, 390, 768, 1024, 1440]) {

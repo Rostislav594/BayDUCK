@@ -65,7 +65,7 @@ createServer(async (request, response) => {
     if (
       !path.startsWith(root + sep) ||
       relativePath.some((part) => part.startsWith(".")) ||
-      !["index.html", "admin.html", "src", "assets"].includes(relativePath[0])
+      !["index.html", "admin.html", "src", "assets", "p"].includes(relativePath[0])
     ) {
       response.writeHead(403).end("Forbidden");
       return;

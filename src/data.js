@@ -12,6 +12,20 @@ export const products = [
     color: "white",
     sizes: ["36", "37", "38", "39", "40", "41", "42", "43", "44", "45"],
     tag: "bestseller",
+    article: "BD-CE-01",
+    fit: "true",
+    details: {
+      upper: "matLeather",
+      lining: "matTextile",
+      sole: "matRubber",
+      season: "seasonAll",
+      closure: "closureLaces",
+    },
+    description: {
+      uk: "Класичні білі кросівки на кожен день: гладка шкіра, м'яка устілка й гумова підошва, що не ковзає.",
+      ru: "Классические белые кроссовки на каждый день: гладкая кожа, мягкая стелька и нескользящая резиновая подошва.",
+      en: "Classic white everyday sneakers: smooth leather, a soft insole and a non-slip rubber sole.",
+    },
   },
   {
     id: "retro",
@@ -25,6 +39,20 @@ export const products = [
     color: "sand",
     sizes: ["40", "41", "42", "43", "44", "45"],
     tag: "new",
+    article: "BD-RR-02",
+    fit: "small",
+    details: {
+      upper: "matSuedeMesh",
+      lining: "matTextile",
+      sole: "matEva",
+      season: "seasonDemi",
+      closure: "closureLaces",
+    },
+    description: {
+      uk: "Ретро-ранери із замші та сітки: легка підошва EVA і пісочний відтінок, що пасує до джинсів і карго.",
+      ru: "Ретро-раннеры из замши и сетки: лёгкая подошва EVA и песочный оттенок, который подходит к джинсам и карго.",
+      en: "Retro runners in suede and mesh: a light EVA sole and a sand shade that works with jeans and cargos.",
+    },
   },
   {
     id: "daily",
@@ -38,6 +66,20 @@ export const products = [
     color: "cream",
     sizes: ["36", "37", "38", "39", "40", "41"],
     tag: "new",
+    article: "BD-DL-03",
+    fit: "true",
+    details: {
+      upper: "matLeather",
+      lining: "matLeather",
+      sole: "matRubber",
+      season: "seasonAll",
+      closure: "closureLaces",
+    },
+    description: {
+      uk: "Мінімалістичні низькі кросівки кремового кольору — легко поєднати і з сукнею, і з костюмом.",
+      ru: "Минималистичные низкие кроссовки кремового цвета — легко сочетать и с платьем, и с костюмом.",
+      en: "Minimal low-top sneakers in cream that pair as easily with a dress as with a suit.",
+    },
   },
   {
     id: "red",
@@ -52,6 +94,20 @@ export const products = [
     color: "red",
     sizes: ["37", "38", "39", "40", "41", "42", "43", "44"],
     tag: "sale",
+    article: "BD-AM-04",
+    fit: "large",
+    details: {
+      upper: "matMesh",
+      lining: "matTextile",
+      sole: "matFoam",
+      season: "seasonSummer",
+      closure: "closureLaces",
+    },
+    description: {
+      uk: "Яскраві червоні кросівки з дихаючої сітки й амортизуючої підошви для активного дня.",
+      ru: "Яркие красные кроссовки из дышащей сетки с амортизирующей подошвой для активного дня.",
+      en: "Bright red sneakers with breathable mesh and a cushioned sole for an active day.",
+    },
   },
   {
     id: "urban",
@@ -65,6 +121,20 @@ export const products = [
     color: "cream",
     sizes: ["36", "37", "38", "39", "40", "41", "42", "43", "44"],
     tag: "new",
+    article: "BD-UL-05",
+    fit: "true",
+    details: {
+      upper: "matLeatherSuede",
+      lining: "matTextile",
+      sole: "matRubber",
+      season: "seasonDemi",
+      closure: "closureLaces",
+    },
+    description: {
+      uk: "Міські низькі кросівки зі вставками із замші: м'яка посадка і стримана кремова гама.",
+      ru: "Городские низкие кроссовки со вставками из замши: мягкая посадка и сдержанная кремовая гамма.",
+      en: "City low-tops with suede panels: a soft fit and a calm cream palette.",
+    },
   },
   {
     id: "shirt",
@@ -78,6 +148,18 @@ export const products = [
     color: "white",
     sizes: ["XS", "S", "M", "L", "XL"],
     tag: "new",
+    article: "BD-ES-06",
+    fit: "true",
+    details: {
+      fabric: "matCotton",
+      season: "seasonAll",
+      care: "careWash30",
+    },
+    description: {
+      uk: "Біла сорочка з бавовни вільного крою — базова річ для щоденних образів.",
+      ru: "Белая рубашка из хлопка свободного кроя — базовая вещь для повседневных образов.",
+      en: "A relaxed white cotton shirt — a basic for everyday outfits.",
+    },
   },
   {
     id: "hoodie",
@@ -91,6 +173,18 @@ export const products = [
     color: "stone",
     sizes: ["XS", "S", "M", "L", "XL"],
     tag: "bestseller",
+    article: "BD-WH-07",
+    fit: "large",
+    details: {
+      fabric: "matCottonFleece",
+      season: "seasonDemi",
+      care: "careWash30",
+    },
+    description: {
+      uk: "Худі oversize з м'якого футеру з начосом: тепле, але легке.",
+      ru: "Худи oversize из мягкого футера с начёсом: тёплое, но лёгкое.",
+      en: "An oversized hoodie in soft brushed fleece: warm yet light.",
+    },
   },
   {
     id: "backpack",
@@ -104,7 +198,22 @@ export const products = [
     color: "stone",
     sizes: ["ONE SIZE"],
     tag: "new",
+    article: "BD-CB-08",
+    fit: null,
+    details: {
+      fabric: "matPolyester",
+      volume: "20",
+      dimensions: "45 × 30 × 14",
+    },
+    description: {
+      uk: "Міський рюкзак із відділенням для ноутбука до 15,6″ і водовідштовхувальною тканиною.",
+      ru: "Городской рюкзак с отделением для ноутбука до 15,6″ и водоотталкивающей тканью.",
+      en: "A city backpack with a sleeve for laptops up to 15.6″ and water-repellent fabric.",
+    },
   },
 ];
+// Every product has at least its main photo; extra photos go to `images` once they exist.
+export const productImages = (product) =>
+  product.images?.length ? product.images : [product.image];
 export const productById = (id) =>
   products.find((product) => product.id === id);
