@@ -149,9 +149,10 @@ async (browserPage) => {
       check(await page.locator(".header-account").isVisible(), `Account icon visible at ${width}px`);
     }
     await page.locator('[data-action="sign-out"]').click();
-    await page.locator(".menu-toggle").click();
-    check(await page.locator('.mobile-nav [data-action="auth"]').isVisible(), "Mobile menu offers sign-in to guests");
-    await page.locator('.mobile-nav [data-action="auth"]').click();
+    await page.locator(".menu-pull").click();
+    check(await page.locator(".mobile-nav .menu-card").count() === 3, "Mobile menu shows the men, women and sale cards");
+    await page.locator(".menu-pull").click();
+    await page.locator(".header-account").click();
     check(await auth.evaluate(d => d.scrollWidth <= d.clientWidth + 1) && await auth.evaluate(d => d.open), "Sign-in dialog fits the phone screen");
     await signin.locator('[name="email"]').fill(email);
     await signin.locator('[name="password"]').fill(newPassword);

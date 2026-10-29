@@ -238,7 +238,7 @@ function header() {
     )
     .join(
       "",
-    )}</select></label><a href="#favorites" class="icon-button header-heart" aria-label="${t("favorites")}">${icon("heart")}${state.favorites.length ? `<span class="count-dot">${state.favorites.length}</span>` : ""}</a>${accountLink("icon-button header-account", r.page === "account")}<button class="cart-trigger" data-action="cart" aria-label="${t("cart")}">${icon("bag")}<span class="cart-label">${t("cart")}</span><span class="cart-count">${cartCount(state.cart)}</span></button><button class="icon-button menu-toggle" data-action="menu" aria-expanded="${state.menu}" aria-label="${t("menu")}">${icon(state.menu ? "close" : "menu")}</button></div></header>${state.menu ? `<nav class="mobile-nav" aria-label="${t("catalog")}"><a href="#catalog">${t("catalog")}</a><a href="#catalog?gender=women">${t("women")}</a><a href="#catalog?gender=men">${t("men")}</a><a href="#catalog?category=clothing">${t("clothing")}</a><a href="#catalog?category=accessories">${t("accessories")}</a><a href="#catalog?sale=1">${t("sale")}</a><a href="#favorites">${t("favorites")}</a>${state.account ? `<a href="#account">${t("account")}</a>` : `<button type="button" data-action="auth">${t("signIn")}</button>`}</nav>` : ""}`;
+    )}</select></label><a href="#favorites" class="icon-button header-heart" aria-label="${t("favorites")}">${icon("heart")}${state.favorites.length ? `<span class="count-dot">${state.favorites.length}</span>` : ""}</a>${accountLink("icon-button header-account", r.page === "account")}<button class="cart-trigger" data-action="cart" aria-label="${t("cart")}">${icon("bag")}<span class="cart-label">${t("cart")}</span><span class="cart-count">${cartCount(state.cart)}</span></button></div>${menuDrawer()}</header>`;
 }
 // Signed-in customers go to their account page; guests open the sign-in dialog.
 function accountLink(cls, active) {
@@ -400,6 +400,79 @@ function heroMotto() {
   const last = words.pop();
   return `<p class="hero-motto">${words.join(" ")} <span class="motto-end">${last}${heartIcon}</span></p>`;
 }
+// Mobile menu: a tab bulging from the bottom edge of the header. Pull it down
+// (or tap it) and the header unfolds into the list; pull it up to fold it back.
+const menuDrawer = () =>
+  `<div class="menu-drawer${state.menu ? " is-open" : ""}"><button type="button" class="menu-pull" aria-expanded="${state.menu}" aria-controls="mobile-nav" aria-label="${t("menu")}">${icon("chevron")}</button><div class="menu-sheet" style="height:${state.menu ? "auto" : "0px"}"><nav class="mobile-nav" id="mobile-nav" aria-label="${t("catalog")}">${menuCards()}</nav></div></div>`;
+// Menu boxes: a drawn sign and a label in a plain box with a soft shadow.
+const menuSigns = {
+  men: '<circle cx="20" cy="28" r="11"/><path d="M28 20 38 10M30 10h8v8"/>',
+  women: '<circle cx="24" cy="19" r="11"/><path d="M24 30v12M18 36h12"/>',
+  // A hanging price tag with a percent sign and an arrow: the price went down.
+  sale: '<path d="M10 14 17 8l7 6v20a3 3 0 0 1-3 3h-8a3 3 0 0 1-3-3Z"/><circle cx="17" cy="14" r="1.6"/><circle cx="14" cy="22.5" r="1.6"/><circle cx="20" cy="29.5" r="1.6"/><path d="M20.5 21.5 13.5 30.5M33 15v19M28 29l5 5 5-5"/>',
+};
+function menuCards() {
+  const box = (href, label, sign) =>
+    `<a class="menu-card" href="${href}"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${menuSigns[sign]}</svg><span>${label}</span></a>`;
+  return [
+    box("#catalog?gender=men", t("men"), "men"),
+    box("#catalog?gender=women", t("women"), "women"),
+    box("#catalog?sale=1", t("sale"), "sale"),
+  ].join("");
+}
+let menuDrag = null;
+let skipMenuClick = false;
+function setMenu(open) {
+  state.menu = open;
+  const drawer = $(".menu-drawer");
+  if (!drawer) return;
+  const sheet = drawer.querySelector(".menu-sheet");
+  const from = sheet.getBoundingClientRect().height;
+  drawer.classList.toggle("is-open", open);
+  drawer.querySelector(".menu-pull").setAttribute("aria-expanded", String(open));
+  // Animate from wherever the sheet is now (closed, open or mid-pull).
+  sheet.style.transition = "none";
+  sheet.style.height = `${from}px`;
+  sheet.offsetHeight;
+  sheet.style.transition = "";
+  sheet.style.height = `${open ? sheet.scrollHeight : 0}px`;
+  if (open)
+    sheet.addEventListener("transitionend", () => {
+      if (state.menu) sheet.style.height = "auto";
+    }, { once: true });
+}
+document.addEventListener("pointerdown", (event) => {
+  skipMenuClick = false;
+  const pull = event.target.closest(".menu-pull");
+  if (!pull || event.button !== 0) return;
+  const drawer = pull.closest(".menu-drawer");
+  const sheet = drawer.querySelector(".menu-sheet");
+  menuDrag = { drawer, sheet, y: event.clientY, start: sheet.getBoundingClientRect().height, full: sheet.scrollHeight, height: null };
+  pull.setPointerCapture(event.pointerId);
+});
+document.addEventListener("pointermove", (event) => {
+  if (!menuDrag) return;
+  const dy = event.clientY - menuDrag.y;
+  if (menuDrag.height === null && Math.abs(dy) < 6) return;
+  const { drawer, sheet, full } = menuDrag;
+  menuDrag.height = Math.min(full, Math.max(0, menuDrag.start + dy));
+  drawer.classList.add("is-dragging");
+  sheet.style.height = `${menuDrag.height}px`;
+  drawer.style.setProperty("--menu-progress", String(menuDrag.height / full));
+});
+function endMenuDrag() {
+  const drag = menuDrag;
+  menuDrag = null;
+  // Without a pull this was a tap, and the click that follows toggles the menu.
+  if (!drag || drag.height === null) return;
+  skipMenuClick = true;
+  drag.drawer.classList.remove("is-dragging");
+  drag.drawer.style.removeProperty("--menu-progress");
+  const opening = drag.height > drag.start;
+  setMenu(drag.height > drag.full * (opening ? 0.25 : 0.75));
+}
+document.addEventListener("pointerup", endMenuDrag);
+document.addEventListener("pointercancel", endMenuDrag);
 function render() {
   const page = route().page;
   if (renderedPage !== page) resetHeroBasket();
@@ -690,6 +763,13 @@ document.addEventListener("click", (event) => {
   if (!event.target.closest('.fact-tip, [data-action="fact-tip"]')) closeFactTips();
   const basket = event.target.closest(".hero-basket");
   if (basket) return stowHeroBasket(basket);
+  if (event.target.closest(".menu-pull")) {
+    if (skipMenuClick) skipMenuClick = false;
+    else setMenu(!state.menu);
+    return;
+  }
+  // A tap anywhere outside the open menu folds it back.
+  if (state.menu && !event.target.closest(".menu-drawer")) setMenu(false);
   const button = event.target.closest("[data-action]");
   if (!button) return;
   if (button.dataset.action === "fact-tip") return toggleFactTip(button);
@@ -702,11 +782,6 @@ document.addEventListener("click", (event) => {
   if (action === "favorite") updateFavorite(button.dataset.id);
   if (action === "cart") openCart();
   if (action === "close") closeDialog(button.closest("dialog"));
-  if (action === "menu") {
-    state.menu = !state.menu;
-    render();
-    $(".menu-toggle").focus();
-  }
   if (action === "category")
     navigateFilters({ category: button.dataset.value });
   if (action === "reset") {
@@ -759,7 +834,7 @@ document.addEventListener("click", (event) => {
     $(`[data-action="buy-method"][data-value="${state.buyMethod}"]`)?.focus();
   }
   if (action === "auth") {
-    state.menu = false;
+    setMenu(false);
     openAuth(button.dataset.view || "signin", button.dataset.return || null);
   }
   if (action === "auth-view") {
@@ -958,6 +1033,11 @@ window.addEventListener("storage", (event) => {
     state.account = accounts.current();
     if (before !== state.account?.id || route().page === "account") render();
   }
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape" || !state.menu || document.querySelector("dialog[open]")) return;
+  setMenu(false);
+  $(".menu-pull")?.focus();
 });
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;

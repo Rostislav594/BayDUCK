@@ -399,10 +399,7 @@ main:focus {
   display: grid;
   place-items: center;
 }
-.menu-toggle {
-  display: none;
-}
-.mobile-nav {
+.menu-drawer {
   display: none;
 }
 /* Product constellation hero, with deliberately quiet UI around photography. */
@@ -1949,11 +1946,108 @@ dialog::backdrop {
   .header-actions {
     gap: 7px;
   }
-  .menu-toggle {
-    display: flex;
+  .header {
+    position: relative;
+    z-index: 20;
   }
+  .header .header-heart {
+    display: inline-flex;
+  }
+  /* Language: a round badge with the code, like the UA circle in the desktop rail. */
   .language-control > .icon {
     display: none;
+  }
+  .header .language-control select {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    text-align: center;
+    text-align-last: center;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ink);
+  }
+  .header .language-control select:focus-visible {
+    outline: 2px solid var(--violet);
+    outline-offset: 2px;
+  }
+  /* Pull-down menu: the tab hangs from the header's bottom edge and the list
+     unfolds above it, as if the header itself grew. */
+  .menu-drawer {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+  }
+  .menu-sheet {
+    align-self: stretch;
+    overflow: hidden;
+    background: white;
+    visibility: hidden;
+    pointer-events: auto;
+    transition:
+      height 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+      visibility 0s 0.28s;
+  }
+  .menu-drawer.is-open .menu-sheet,
+  .menu-drawer.is-dragging .menu-sheet {
+    visibility: visible;
+    box-shadow: 0 12px 18px #0000000d;
+    transition: height 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  /* A low, smooth bump grows out of the header line; the button around it is a
+     larger, invisible touch area that also covers the header's bottom edge. */
+  .menu-pull {
+    order: 1;
+    position: relative;
+    width: 64px;
+    height: 26px;
+    margin-top: -8px;
+    border-radius: 10px;
+    color: var(--ink);
+    pointer-events: auto;
+    touch-action: none;
+    cursor: grab;
+  }
+  .menu-pull::before {
+    content: "";
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    top: 8px;
+    height: 13px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 52 13' preserveAspectRatio='none'%3E%3Cpath fill='white' d='M0 0C10 0 14 13 26 13S42 0 52 0Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+    filter: drop-shadow(0 3px 2px #00000012);
+  }
+  .menu-pull .icon {
+    position: absolute;
+    left: calc(50% - 6px);
+    top: 7px;
+    width: 12px;
+    height: 12px;
+    stroke-width: 2;
+    /* Points down when folded, up when unfolded, and turns with the pull. */
+    rotate: calc(90deg - 180deg * var(--menu-progress, 0));
+    transition: rotate 0.28s;
+  }
+  .menu-drawer.is-open {
+    --menu-progress: 1;
+  }
+  .menu-drawer.is-dragging .menu-sheet,
+  .menu-drawer.is-dragging .menu-pull .icon {
+    transition: none;
+  }
+  .menu-pull:focus-visible {
+    outline: 2px solid var(--violet);
+    outline-offset: -2px;
   }
   .cart-trigger {
     padding: 8px 10px;
@@ -1972,17 +2066,48 @@ dialog::backdrop {
     width: 44px;
     font-size: 11px;
   }
+  /* Three plain boxes with a soft shadow: a violet sign and a label. */
   .mobile-nav {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    padding: 10px 18px 24px;
+  }
+  .mobile-nav .menu-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 104px;
+    padding: 16px 6px 14px;
+    border-radius: 20px;
     background: white;
-    gap: 0;
-    padding: 10px 20px 20px;
-    position: absolute;
-    z-index: 12;
-    left: 0;
-    right: 0;
-    box-shadow: 0 12px 18px #0000000d;
+    color: var(--ink);
+    box-shadow:
+      0 10px 24px #1616161a,
+      0 2px 6px #16161610;
+    transition:
+      transform 0.2s,
+      box-shadow 0.2s;
+  }
+  .mobile-nav .menu-card:active {
+    transform: translateY(2px);
+    box-shadow: 0 4px 12px #16161614;
+  }
+  .mobile-nav .menu-card:focus-visible {
+    outline: 2px solid var(--violet);
+    outline-offset: 3px;
+  }
+  .mobile-nav .menu-card > svg {
+    width: 44px;
+    height: 44px;
+    color: var(--violet);
+  }
+  .mobile-nav .menu-card > span {
+    font-size: 12px;
+    line-height: 1.2;
+    text-align: center;
   }
   .mobile-nav a {
     font-size: 14px;
@@ -3326,10 +3451,13 @@ dialog::backdrop {
   }
 }
 @media (max-width: 360px) {
-  /* Leave room for the account icon beside language, bag and menu. */
+  /* Leave room for language, favourites, account and bag beside the logo. */
   .brand,
   .brand img {
     width: 104px;
+  }
+  .header .icon-button {
+    width: 30px;
   }
 }
 @media (max-width: 500px) {

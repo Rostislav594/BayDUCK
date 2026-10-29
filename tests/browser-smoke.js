@@ -96,11 +96,11 @@ async (page) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator('.hero').waitFor();
   check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Mobile home fits viewport');
-  await page.locator('.menu-toggle').click();
+  await page.locator('.menu-pull').click();
   check(await page.locator('.mobile-nav').isVisible(), 'Mobile menu opens');
   await page.locator('.mobile-nav a[href="#catalog?gender=women"]').click();
   await count(7);
-  check(await page.locator('.mobile-nav').count() === 0, 'Mobile menu closes on navigation');
+  check(await page.locator('.menu-drawer.is-open').count() === 0 && !await page.locator('.mobile-nav').isVisible(), 'Mobile menu closes on navigation');
   check(await page.locator('.product-card').count() === 7, 'Women filter includes unisex');
   check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Mobile catalog fits viewport');
   await page.locator('.product-open').first().click();
