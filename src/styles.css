@@ -1538,6 +1538,20 @@ dialog::backdrop {
   max-width: calc(100% - 32px);
   border-radius: 24px;
 }
+/* Long content (foot guide): the header stays, the body scrolls inside the rounded window. */
+.info-dialog[open]:has(.foot-guide) {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 48px);
+  overflow: hidden;
+}
+.info-dialog .foot-guide {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #c9c4f3 transparent;
+}
 .info-dialog > .dialog-header {
   padding: 16px 24px;
 }
@@ -3533,11 +3547,16 @@ dialog::backdrop {
   color: var(--muted);
   letter-spacing: 1px;
 }
-.product-info > h1 {
+.product-title-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 10px;
+}
+.product-title-row h1 {
   font-size: 40px;
   line-height: 1.15;
   letter-spacing: -1.6px;
-  margin-top: 10px;
 }
 .product-lead {
   font-size: 14px;
@@ -3581,15 +3600,17 @@ dialog::backdrop {
   color: var(--violet);
 }
 .share-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 16px;
-  font-size: 13px;
+  flex: none;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+}
+.share-button:hover {
+  background: var(--canvas);
 }
 .share-button .icon {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
 }
 .product-specs,
 .related-products {
@@ -3623,54 +3644,6 @@ dialog::backdrop {
   margin: 0;
   text-align: right;
 }
-.size-chart {
-  padding: 20px 24px 24px;
-  display: grid;
-  gap: 16px;
-}
-.size-chart table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-.size-chart th,
-.size-chart td {
-  padding: 9px 10px;
-  border-bottom: 1px solid var(--border);
-  text-align: left;
-}
-.size-chart thead th {
-  font-weight: 500;
-  font-size: 12px;
-  color: var(--muted);
-}
-.size-chart tbody th {
-  font-weight: 500;
-}
-.foot-form {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: end;
-  gap: 10px;
-}
-.foot-form .button {
-  min-height: 47px;
-  padding: 12px 18px;
-  gap: 10px;
-  font-size: 13px;
-}
-.foot-result {
-  grid-column: 1 / -1;
-  font-size: 13px;
-}
-.foot-result:empty {
-  display: none;
-}
-.size-howto {
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--muted);
-}
 @media (max-width: 900px) {
   .product-layout {
     grid-template-columns: 1fr;
@@ -3679,15 +3652,12 @@ dialog::backdrop {
   .product-gallery {
     position: static;
   }
-  .product-info > h1 {
+  .product-title-row h1 {
     font-size: 32px;
   }
 }
 @media (max-width: 600px) {
   .product-specs dl {
-    grid-template-columns: 1fr;
-  }
-  .foot-form {
     grid-template-columns: 1fr;
   }
 }
@@ -3701,14 +3671,10 @@ dialog::backdrop {
   font-weight: 500;
   line-height: 1.2;
   white-space: nowrap;
-  background: var(--surface);
-  color: var(--ink);
-  border: 1px solid var(--border);
-}
-.condition-badge.condition-newTag {
+  /* «Вживане» and «Нові з біркою» share one violet style; only «Продано» differs. */
   background: #efebfd;
-  border-color: #efebfd;
   color: #3f22c9;
+  border: 1px solid #efebfd;
 }
 .product-size {
   font-size: 12px;
@@ -3719,41 +3685,62 @@ dialog::backdrop {
   color: var(--ink);
   font-weight: 500;
 }
+/* Size, insole and condition: one box each */
 .item-facts {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, auto));
-  justify-content: start;
-  gap: 10px 28px;
+  grid-template-columns: repeat(var(--facts, 3), minmax(0, 1fr));
+  gap: 10px;
   margin: 24px 0 0;
-  padding: 16px 18px;
-  border: 1px solid var(--border);
-  border-radius: 20px;
 }
+.item-facts > div {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 8px;
+  min-width: 0;
+}
+/* The label sits above its box. */
 .item-facts dt {
-  font-size: 11px;
-  color: var(--muted);
-  margin-bottom: 6px;
+  font-size: 13px;
+  color: var(--ink);
 }
+/* The box: value on the left, drawing on the right, never on top of each other. */
 .item-facts dd {
   margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 64px;
+  padding: 10px 12px 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
   font-size: 18px;
   font-weight: 500;
   letter-spacing: -0.4px;
 }
-.product-info .size-howto {
-  margin-top: 12px;
+.fact-value {
+  min-width: 0;
 }
-.unique-note {
-  font-size: 12px;
-  color: var(--muted);
-  margin-top: 10px;
+.item-facts dd {
+  min-width: 0;
+}
+/* In a narrow box the label wraps instead of pushing the grid wider. */
+.item-facts .condition-badge {
+  white-space: normal;
+}
+/* Mid widths: the info column is narrow, so use two boxes per row like on phones. */
+@media (min-width: 901px) and (max-width: 1180px) {
+  .item-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 .cart-item-info .condition-badge {
   margin: 6px 0 2px;
 }
 @media (max-width: 500px) {
   .item-facts {
-    grid-template-columns: repeat(2, minmax(0, auto));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 .condition-badge.condition-sold {
@@ -3767,4 +3754,161 @@ dialog::backdrop {
   border-radius: 18px;
   background: var(--canvas);
   font-size: 14px;
+}
+/* Drawings have a fixed size, so they never grow with the box. */
+.fact-info-button,
+.foot-guide-button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 42px;
+  color: var(--violet);
+}
+/* The closed box is wider than tall: its frame is cropped to the drawing. */
+.fact-info-button .fact-drawing.is-wide {
+  height: 30px;
+}
+.fact-info-button:has(.is-wide) {
+  width: 38px;
+}
+.fact-info-button .fact-drawing,
+.foot-guide-button .foot-ruler {
+  width: auto;
+  height: 38px;
+}
+.fact-info-button,
+.foot-guide-button {
+  border-radius: 12px;
+  transition: background 0.2s;
+}
+.fact-info-button:hover,
+.fact-info-button[aria-expanded="true"] {
+  background: #efebfd;
+}
+.fact-info-button:focus-visible {
+  outline: 2px solid var(--violet);
+  outline-offset: 2px;
+}
+/* Short note under a box, opened by its drawing. */
+.item-facts dd {
+  position: relative;
+}
+.fact-tip {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 5;
+  width: min(280px, calc(100vw - 32px));
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: normal;
+  box-shadow: 0 8px 24px #0000002e;
+}
+.fact-tip[hidden] {
+  display: none;
+}
+.foot-guide-button:hover {
+  background: #efebfd;
+}
+.foot-guide-button:focus-visible {
+  outline: 2px solid var(--violet);
+  outline-offset: 2px;
+}
+/* Foot measuring guide */
+.foot-guide {
+  display: grid;
+  gap: 18px;
+  padding: 20px 24px 24px;
+}
+.foot-guide-hero {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 18px;
+  border-radius: 22px;
+  background: #efebfd;
+  color: #3f22c9;
+}
+.foot-guide-hero .foot-ruler {
+  flex: none;
+  width: auto;
+  height: 72px;
+}
+.foot-guide-hero > div {
+  display: grid;
+  gap: 4px;
+}
+.foot-guide-hero .eyebrow {
+  font-size: 10px;
+  color: #3f22c9;
+  opacity: 0.8;
+}
+.foot-guide-hero strong {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.foot-guide-hero span {
+  font-size: 13px;
+  color: var(--ink);
+}
+.foot-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+  counter-reset: none;
+}
+.foot-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.foot-step-number {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+}
+.foot-tips {
+  list-style: none;
+  margin: 0;
+  padding: 14px 16px;
+  display: grid;
+  gap: 8px;
+  border-radius: 18px;
+  background: var(--canvas);
+  font-size: 13px;
+}
+.foot-tips li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.foot-tips .icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--violet);
+  margin-top: 1px;
+}
+@media (max-width: 500px) {
+  .foot-guide {
+    padding-inline: 18px;
+  }
 }

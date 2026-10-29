@@ -81,3 +81,5 @@ export const newestProducts = (limit = 4) =>
     .slice(0, limit)
     .map(({ product }) => product);
 
+// Foot lengths this insole suits best (1 to 0.5 cm shorter).
+export const footRange = (insoleCm) => ({ from: insoleCm - 1, to: insoleCm - 0.5 });

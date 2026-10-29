@@ -46,3 +46,9 @@ test("every product has page content in all three languages", () => {
     }
   }
 });
+
+test("the guide tells which foot length suits this pair's insole", async () => {
+  const { footRange } = await import("../src/model.js");
+  assert.deepEqual(footRange(27.5), { from: 26.5, to: 27 });
+  assert.deepEqual(footRange(24.5), { from: 23.5, to: 24 });
+});

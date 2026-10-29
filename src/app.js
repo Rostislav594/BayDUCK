@@ -7,6 +7,7 @@ import {
   cartCount,
   cartTotal,
   addToCart,
+  footRange,
   inCart,
   newestProducts,
   relatedProducts,
@@ -173,6 +174,37 @@ const conditionBadge = (product, extra = "") =>
   product.status === "sold"
     ? `<span class="condition-badge condition-sold ${extra}">${t("soldBadge")}</span>`
     : `<span class="condition-badge condition-${product.condition} ${extra}">${t(product.condition === "newTag" ? "condNewTag" : "condUsed")}</span>`;
+const footRulerIcon = `<svg class="foot-ruler" viewBox="0 0 26 44" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.4 18.5C2.2 14.6 4.6 12 8.2 12c3.6 0 5.8 2.4 5.6 6.4-.2 3.6-2.2 6-2.5 9.6-.3 3.2.9 5.4.7 8.6-.2 3.4-2 5.4-4.1 5.4-2.3 0-3.9-1.8-3.9-5 0-3.6-.5-6.2-1-10.2-.3-2.8-.5-5.4-.6-8.3Z"/><g fill="currentColor" stroke="none"><circle cx="12.3" cy="7.5" r="1.75"/><circle cx="8.65" cy="6.2" r="1.25"/><circle cx="5.75" cy="7" r="1.1"/><circle cx="3.5" cy="8.7" r=".95"/><circle cx="2.2" cy="10.9" r=".8"/></g><rect x="18" y="2.5" width="5.5" height="39" rx="1.6"/><path d="M18 8h2.4M18 13h3.4M18 18h2.4M18 23h3.4M18 28h2.4M18 33h3.4M18 38h2.4"/></svg>`;
+// Decorative drawings for the size and condition boxes, same style as the foot guide.
+const sizeTagIcon = `<svg class="fact-drawing" viewBox="0 0 26 44" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 13.5c-2.6-3.2-4.4-7.7-1.8-9.6 2.4-1.7 5.6 1 4.4 4.6"/><path d="M7.5 15.5 13 10.5l5.5 5v24a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2Z"/><circle cx="13" cy="15.6" r="1.4"/><path d="M10.3 23h5.4M10.3 27.5h5.4M10.3 32h3.6"/></svg>`;
+// Closed box for new items with tags, open box for pre-owned ones.
+const closedBoxIcon = `<svg class="fact-drawing is-wide" viewBox="0 18 30 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 24h22v5H2zM2 24l3.5-4H27l-3 4M24 29l3-4v-5"/><path d="M3 29h20v11.2H3zM23 29l3-3.4v10.4l-3 4.2"/><path d="M8 34.6h10"/></svg>`;
+const shoeBoxIcon = `<svg class="fact-drawing" viewBox="0 0 30 44" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 24 9 9.2l19 1.4L26 24"/><path d="M8.6 12.2l18.9 1.4"/><path d="M3 28h20v12.2H3zM3 28l4-4h19l-3 4M23 28l3-4v11.6l-3 4.6"/><path d="M8.2 26.6c1.6-1.6 3.2-1.6 4.8 0s3.2 1.6 4.8 0"/><path d="M8 34.2h10"/></svg>`;
+// Drawing that opens a short note under its box (size label, condition).
+const factTip = (key, label, drawing, text) =>
+  `<button type="button" class="fact-info-button" data-action="fact-tip" aria-expanded="false" aria-controls="tip-${key}" aria-label="${escape(label)}" title="${escape(label)}">${drawing}</button><span class="fact-tip" id="tip-${key}" role="note" hidden>${escape(text)}</span>`;
+function closeFactTips(except = null) {
+  for (const button of document.querySelectorAll('[data-action="fact-tip"][aria-expanded="true"]')) {
+    if (button === except) continue;
+    button.setAttribute("aria-expanded", "false");
+    document.getElementById(button.getAttribute("aria-controls")).hidden = true;
+  }
+}
+function toggleFactTip(button) {
+  const tip = document.getElementById(button.getAttribute("aria-controls"));
+  const open = tip.hidden;
+  closeFactTips(button);
+  tip.hidden = !open;
+  button.setAttribute("aria-expanded", String(open));
+  if (!open) return;
+  // Keep the note on screen: shift it left when the box sits near the right edge.
+  tip.style.left = "0px";
+  const box = tip.parentElement.getBoundingClientRect();
+  const overflow = box.left + tip.offsetWidth - (document.documentElement.clientWidth - 16);
+  if (overflow > 0) tip.style.left = `${-overflow}px`;
+}
+const cmNumber = (value) =>
+  new Intl.NumberFormat({ uk: "uk-UA", ru: "ru-UA", en: "en-GB" }[state.language], { maximumFractionDigits: 1 }).format(value);
 function productCard(product, index = 0) {
   return `<article class="product-card" style="--order:${index}"><div class="product-visual"><a class="product-open" href="#product/${product.id}" aria-label="${escape(product.name)}"><img src="${photo(product)}" alt="${escape(product.name)} — ${escape(t(product.color))}" loading="lazy" width="600" height="600" /></a>${conditionBadge(product, "product-tag")}${favoriteButton(product.id)}<span class="quick-view" aria-hidden="true">${icon("plus")}</span></div><div class="product-meta"><div><p class="product-brand">${product.brand}</p><a class="product-name" href="#product/${product.id}">${product.name}</a><p class="product-kind">${t(product.type)} · ${t(product.color)}</p><p class="product-size">${t("sizeLabel")} <strong>${escape(sizeText(product))}</strong>${product.insoleCm ? ` · ${t("insoleShort")} ${insoleText(product)}` : ""}</p></div><div class="price"><span>${money(product.price)}</span>${product.oldPrice ? `<del>${money(product.oldPrice)}</del>` : ""}</div></div></article>`;
 }
@@ -374,19 +406,34 @@ function productPage() {
     .join("");
   const added = inCart(state.cart, p.id);
   const available = isAvailable(p);
+  const guide = `<button type="button" class="foot-guide-button" data-action="foot-guide" aria-label="${escape(t("footGuideTitle"))}" title="${escape(t("footGuideTitle"))}">${footRulerIcon}</button>`;
   const facts = [
-    [t("sizeLabel"), escape(sizeText(p))],
-    ...(p.insoleCm ? [[t("insoleLength"), insoleText(p)]] : []),
-    [t("conditionLabel"), conditionBadge(p)],
+    [t("sizeLabel"), escape(sizeText(p)), factTip("size", t("factInfoSize"), sizeTagIcon, t(p.size === "ONE SIZE" ? "tipSizeOne" : p.type === "sneakers" ? "tipSizeShoes" : "tipSizeItem"))],
+    ...(p.insoleCm ? [[t("insoleLength"), insoleText(p), guide]] : []),
+    [t("conditionLabel"), conditionBadge(p), factTip("condition", t("factInfoCondition"), p.condition === "newTag" ? closedBoxIcon : shoeBoxIcon, t(`tip${p.condition === "newTag" ? "New" : "Used"}${p.type === "sneakers" ? "Shoes" : "Item"}`))],
   ]
-    .map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`)
+    .map(([label, value, drawing]) => `<div><dt>${label}</dt><dd><span class="fact-value">${value}</span>${drawing}</dd></div>`)
     .join("");
   return `<main id="main" class="product-page content-wrap" tabindex="-1">${breadcrumbs([
     `<a href="#home">${t("home")}</a>`,
     `<a href="#catalog">${t("catalog")}</a>`,
     `<a href="#catalog?category=${p.type}">${t(p.type)}</a>`,
     `<span aria-current="page">${escape(p.name)}</span>`,
-  ])}<div class="product-layout"><section class="product-gallery" aria-label="${escape(p.name)}"><div class="gallery-main"><img src="${imageUrl(images[index])}" alt="${escape(p.name)} — ${escape(t(p.color))}" width="900" height="900" fetchpriority="high"/>${conditionBadge(p, "product-tag")}${favoriteButton(p.id)}</div>${thumbs}</section><div class="product-info"><p class="eyebrow">${escape(p.brand)}</p><h1>${escape(p.name)}</h1><p class="detail-kind">${t(p.type)} · ${t(p.color)} · ${t("articleLabel")} ${escape(p.article)}</p><div class="detail-price">${money(p.price)} ${p.oldPrice ? `<del>${money(p.oldPrice)}</del>` : ""}</div><p class="product-lead">${escape(description)}</p><dl class="item-facts">${facts}</dl>${p.insoleCm ? `<p class="size-howto">${t("insoleHint")}</p>` : ""}${available ? `<p class="unique-note">${t("uniqueNote")}</p>${added ? `<button class="button dark add-to-cart" data-action="cart">${t("inCart")} · ${t("goToCart")} ${icon("bag")}</button>` : `<button class="button dark add-to-cart" data-action="add-cart" data-id="${p.id}">${t("addCart")} ${icon("bag")}</button>`}<button type="button" class="button outline olx-buy" data-action="olx" data-id="${p.id}">${t("buyOlx")} ${icon("arrow")}</button><p class="product-note olx-note">${t("buyOlxNote")}</p>` : `<p class="sold-note" role="status">${t(p.status === "sold" ? "soldNote" : "hiddenNote")}</p><a href="#catalog?category=${p.type}" class="button dark add-to-cart">${t("backCatalog")} ${icon("arrow")}</a>`}<ul class="product-perks"><li>${icon("truck")}${t("perkDelivery")}</li><li>${icon("card")}${t("perkPayment")}</li><li>${icon("shield")}${t("perkOlx")}</li></ul><button type="button" class="subtle-button share-button" data-action="share" data-id="${p.id}">${icon("share")}${t("share")}</button><p class="product-note">${t("productNote")}</p></div></div><section class="product-specs" aria-labelledby="specs-title"><h2 id="specs-title">${t("specsTitle")}</h2><dl>${specs}</dl></section><section class="related-products" aria-labelledby="related-title"><h2 id="related-title">${t("relatedTitle")}</h2><div class="product-grid">${relatedProducts(p).map(productCard).join("")}</div></section></main>`;
+  ])}<div class="product-layout"><section class="product-gallery" aria-label="${escape(p.name)}"><div class="gallery-main"><img src="${imageUrl(images[index])}" alt="${escape(p.name)} — ${escape(t(p.color))}" width="900" height="900" fetchpriority="high"/>${conditionBadge(p, "product-tag")}${favoriteButton(p.id)}</div>${thumbs}</section><div class="product-info"><p class="eyebrow">${escape(p.brand)}</p><div class="product-title-row"><h1>${escape(p.name)}</h1><button type="button" class="icon-button share-button" data-action="share" data-id="${p.id}" aria-label="${escape(t("share"))}" title="${escape(t("share"))}">${icon("share")}</button></div><p class="detail-kind">${t(p.type)} · ${t(p.color)} · ${t("articleLabel")} ${escape(p.article)}</p><div class="detail-price">${money(p.price)} ${p.oldPrice ? `<del>${money(p.oldPrice)}</del>` : ""}</div><p class="product-lead">${escape(description)}</p><dl class="item-facts" style="--facts:${p.insoleCm ? 3 : 2}">${facts}</dl>${available ? `${added ? `<button class="button dark add-to-cart" data-action="cart">${t("inCart")} · ${t("goToCart")} ${icon("bag")}</button>` : `<button class="button dark add-to-cart" data-action="add-cart" data-id="${p.id}">${t("addCart")} ${icon("bag")}</button>`}<button type="button" class="button outline olx-buy" data-action="olx" data-id="${p.id}">${t("buyOlx")} ${icon("arrow")}</button><p class="product-note olx-note">${t("buyOlxNote")}</p>` : `<p class="sold-note" role="status">${t(p.status === "sold" ? "soldNote" : "hiddenNote")}</p><a href="#catalog?category=${p.type}" class="button dark add-to-cart">${t("backCatalog")} ${icon("arrow")}</a>`}<ul class="product-perks"><li>${icon("truck")}${t("perkDelivery")}</li><li>${icon("card")}${t("perkPayment")}</li><li>${icon("shield")}${t("perkOlx")}</li></ul><p class="product-note">${t("productNote")}</p></div></div><section class="product-specs" aria-labelledby="specs-title"><h2 id="specs-title">${t("specsTitle")}</h2><dl>${specs}</dl></section><section class="related-products" aria-labelledby="related-title"><h2 id="related-title">${t("relatedTitle")}</h2><div class="product-grid">${relatedProducts(p).map(productCard).join("")}</div></section></main>`;
+}
+function openFootGuide() {
+  const p = productById(state.product);
+  if (!p?.insoleCm) return;
+  const range = footRange(p.insoleCm);
+  const steps = ["footStep1", "footStep2", "footStep3", "footStep4"]
+    .map((key, i) => `<li><span class="foot-step-number" aria-hidden="true">${i + 1}</span><span>${t(key)}</span></li>`)
+    .join("");
+  const tips = ["footTipEvening", "footTipBoth", "footTipSpare"].map((key) => `<li>${icon("check")}${t(key)}</li>`).join("");
+  const dialog = $("#info-dialog");
+  dialog.setAttribute("aria-label", t("footGuideTitle"));
+  dialog.innerHTML = `<div class="dialog-header"><h2>${t("footGuideTitle")}</h2>${iconButton("close", "close", t("close"))}</div><div class="foot-guide"><div class="foot-guide-hero">${footRulerIcon}<div><p class="eyebrow">${t("footGuideThisPair")} · ${escape(p.name)}</p><strong>${t("footGuideInsole").replace("{cm}", cmNumber(p.insoleCm))}</strong><span>${t("footGuideFits").replace("{from}", cmNumber(range.from)).replace("{to}", cmNumber(range.to))}</span></div></div><ol class="foot-steps">${steps}</ol><ul class="foot-tips">${tips}</ul></div>`;
+  showDialog(dialog);
+  dialog.querySelector(".icon-button").focus();
 }
 async function shareProduct(id) {
   const p = productById(id);
@@ -580,8 +627,11 @@ function info(topic) {
 }
 
 document.addEventListener("click", (event) => {
+  // A click anywhere else closes an open size/condition note.
+  if (!event.target.closest('.fact-tip, [data-action="fact-tip"]')) closeFactTips();
   const button = event.target.closest("[data-action]");
   if (!button) return;
+  if (button.dataset.action === "fact-tip") return toggleFactTip(button);
   const action = button.dataset.action;
   if (action === "play-clothing") animateClothing(button);
   if (action === "product") openProduct(button.dataset.id);
@@ -604,6 +654,7 @@ document.addEventListener("click", (event) => {
     $(`[data-action="photo"][data-index="${state.photo}"]`)?.focus();
   }
   if (action === "share") shareProduct(button.dataset.id);
+  if (action === "foot-guide") openFootGuide();
   if (action === "add-cart") {
     const id = button.dataset.id || state.product;
     if (inCart(state.cart, id)) return toast(t("inCart"));
@@ -843,6 +894,13 @@ window.addEventListener("storage", (event) => {
     state.account = accounts.current();
     if (before !== state.account?.id || route().page === "account") render();
   }
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  const open = document.querySelector('[data-action="fact-tip"][aria-expanded="true"]');
+  if (!open) return;
+  closeFactTips();
+  open.focus();
 });
 window.addEventListener("hashchange", () => {
   state.menu = false;
