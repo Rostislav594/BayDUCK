@@ -428,13 +428,17 @@ function setMenu(open) {
   if (!drawer) return;
   const sheet = drawer.querySelector(".menu-sheet");
   const from = sheet.getBoundingClientRect().height;
-  drawer.classList.toggle("is-open", open);
   drawer.querySelector(".menu-pull").setAttribute("aria-expanded", String(open));
-  // Animate from wherever the sheet is now (closed, open or mid-pull).
+  // Pin the current height (closed, open or mid-pull) without a transition...
   sheet.style.transition = "none";
   sheet.style.height = `${from}px`;
   sheet.offsetHeight;
   sheet.style.transition = "";
+  // ...then change the state and the height together, so the sheet stays
+  // visible until it has folded away.
+  drawer.classList.remove("is-dragging");
+  drawer.style.removeProperty("--menu-progress");
+  drawer.classList.toggle("is-open", open);
   sheet.style.height = `${open ? sheet.scrollHeight : 0}px`;
   if (open)
     sheet.addEventListener("transitionend", () => {
@@ -466,8 +470,8 @@ function endMenuDrag() {
   // Without a pull this was a tap, and the click that follows toggles the menu.
   if (!drag || drag.height === null) return;
   skipMenuClick = true;
-  drag.drawer.classList.remove("is-dragging");
-  drag.drawer.style.removeProperty("--menu-progress");
+  // A finger that slipped a few pixels during a tap still means a tap.
+  if (Math.abs(drag.height - drag.start) < 12) return setMenu(!state.menu);
   const opening = drag.height > drag.start;
   setMenu(drag.height > drag.full * (opening ? 0.25 : 0.75));
 }
@@ -1047,9 +1051,10 @@ document.addEventListener("keydown", (event) => {
   open.focus();
 });
 window.addEventListener("hashchange", () => {
-  state.menu = false;
   enterRoute();
+  // An open menu is drawn open on the new page too, then folds away smoothly.
   render();
+  if (state.menu) setMenu(false);
   track("page_view", { page: route().page });
   if (location.hash === "#arrivals") {
     $("#arrivals")?.scrollIntoView({ behavior: "smooth" });
