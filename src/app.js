@@ -1,6 +1,6 @@
-import { imageUrl, isAvailable, products, productById, productImages } from "./data.js";
+import { imageUrl, isAvailable, products, productById, productImages, showcaseIds } from "./data.js";
 import { dictionaries } from "./i18n.js";
-import { clothingMarkup, animateClothing, cancelClothingAnimations, resetClothingAnimations, syncClothingState } from "./playful-clothes.js";
+import { resetHeroBasket, stowHeroBasket, syncHeroBasket } from "./hero-basket.js";
 import {
   filterProducts,
   sanitizeCart,
@@ -256,7 +256,7 @@ const heroProduct = (n) => {
   return list.length ? list[n % list.length] : null;
 };
 function home() {
-  return `<main id="main" tabindex="-1"><section class="hero" aria-labelledby="hero-title"><div class="hero-copy"><h1 id="hero-title" class="hero-wordmark"><img class="hero-basket" src="assets/branding/shopping-basket-sideways-v3.png" alt="" aria-hidden="true" width="1280" height="1280" /><img class="hero-brand-mark" src="assets/branding/buyduck-wordmark-mascot-v3.png" alt="BuyDUCK" width="1875" height="839" fetchpriority="high" /></h1>${searchForm()}</div>${floatingCard(heroProduct(0), "float-one")}${floatingCard(heroProduct(3), "float-two")}${floatingCard(heroProduct(1), "float-three")}${floatingCard(heroProduct(2), "float-four")}${floatingCard(heroProduct(4), "float-five")}${floatingCard(heroProduct(3), "float-six")}${floatingCard(heroProduct(0), "float-seven")}<span class="floating-note note-left">${t("everydayNote").replace("\n", "<br/>")}</span><span class="floating-note note-right">${t("ownWayNote").replace("\n", "<br/>")}</span><div class="hero-bottom">${categoryPills("all", true)}</div>${clothingMarkup(t)}</section><div class="content-wrap"><section class="arrivals" id="arrivals"><div class="section-heading"><div><p class="eyebrow">${t("rotationLabel")} / 01</p><h2>${t("arrivals")}</h2><p>${t("arrivalsSub")}</p></div><a class="text-link" href="#catalog">${t("allProducts")} ${icon("arrow")}</a></div><div class="product-grid">${newestProducts(4).map(productCard).join("")}</div></section><section class="editorial"><div class="editorial-copy"><p class="eyebrow">${t("collection")}</p><h2>${t("storyTitle").replace("\n", "<br/>")}</h2><p>${t("storyCopy")}</p><a href="#catalog?category=clothing" class="button dark">${t("storyButton")} ${icon("arrow")}</a><span class="editorial-footnote">${t("storyNote")} ↗</span></div><div class="editorial-image"><img src="assets/products/urban-sneakers.jpg" alt="${escape(t("sneakers"))}" loading="lazy" width="900" height="900"/><span class="image-caption">BuyDUCK<br/><small>${t("outsideLabel")}</small></span><span class="image-number">02 / ${t("cultureLabel")}</span></div></section><section class="category-section"><div class="section-heading"><div><p class="eyebrow">${t("categoriesLabel")} / 02</p><h2>${t("categories")}</h2></div></div><div class="category-grid">${[
+  return `<main id="main" tabindex="-1"><section class="hero" aria-labelledby="hero-title"><div class="hero-copy"><h1 id="hero-title" class="hero-wordmark"><img class="hero-basket" src="assets/branding/shopping-basket-sideways-v3.png" alt="" aria-hidden="true" width="1280" height="1280" /><img class="hero-brand-mark" src="assets/branding/buyduck-wordmark-mascot-v3.png" alt="BuyDUCK" width="1875" height="839" fetchpriority="high" /></h1>${searchForm()}</div>${floatingCard(heroProduct(0), "float-one")}${floatingCard(heroProduct(3), "float-two")}${floatingCard(heroProduct(1), "float-three")}${floatingCard(heroProduct(2), "float-four")}${floatingCard(heroProduct(4), "float-five")}${floatingCard(heroProduct(3), "float-six")}${floatingCard(heroProduct(0), "float-seven")}<span class="floating-note note-left">${t("everydayNote").replace("\n", "<br/>")}</span><span class="floating-note note-right">${t("ownWayNote").replace("\n", "<br/>")}</span>${heroMotto()}<div class="hero-bottom">${categoryPills("all", true)}</div></section><div class="content-wrap"><section class="arrivals" id="arrivals"><div class="section-heading"><div><p class="eyebrow">${t("rotationLabel")} / 01</p><h2>${t("arrivals")}</h2><p>${t("arrivalsSub")}</p></div><a class="text-link" href="#catalog">${t("allProducts")} ${icon("arrow")}</a></div><div class="product-grid">${newestProducts(4).map(productCard).join("")}</div></section><section class="editorial"><div class="editorial-copy"><p class="eyebrow">${t("collection")}</p><h2>${t("storyTitle").replace("\n", "<br/>")}</h2><p>${t("storyCopy")}</p><a href="#catalog?category=clothing" class="button dark">${t("storyButton")} ${icon("arrow")}</a><span class="editorial-footnote">${t("storyNote")} ↗</span></div><div class="editorial-image" role="group" aria-roledescription="carousel" aria-label="${escape(t("showcaseLabel"))}">${showcase()}<span class="image-caption">BuyDUCK<br/><small>${t("outsideLabel")}</small></span><span class="image-number">02 / ${t("cultureLabel")}</span></div></section><section class="category-section"><div class="section-heading"><div><p class="eyebrow">${t("categoriesLabel")} / 02</p><h2>${t("categories")}</h2></div></div><div class="category-grid">${[
     ["sneakers", "white-sneakers.jpg", "shoesTitle", "categoryShoes"],
     ["clothing", "hoodie.jpg", "clothingTitle", "categoryClothing"],
     ["accessories", "backpack.jpg", "accessoriesTitle", "categoryAccessories"],
@@ -341,10 +341,68 @@ function footer() {
   return `<footer class="footer"><div class="footer-top"><div class="footer-brand"><a href="#home">BuyDUCK</a><p>${t("footerCopy")}</p></div><div><h3>${t("help")}</h3><button data-action="info" data-topic="delivery">${t("delivery")}</button><button data-action="info" data-topic="returns">${t("returns")}</button><button data-action="info" data-topic="about">${t("about")}</button></div><a href="#catalog" class="footer-cta">${t("explore")}${icon("arrow")}</a></div><div class="footer-bottom"><span>© ${new Date().getFullYear()} BuyDUCK. ${t("rights")}</span><p>${t("prototype")}</p><span>${t("footerMotto")} ↗</span></div></footer>`;
 }
 let renderedPage;
+// Home showcase: photos cross-fade every 5 s; dots or a swipe switch them. It waits while
+// the mouse is over it, a dot has keyboard focus or the tab is hidden.
+let showcaseIndex = 0;
+let showcaseTimer;
+let swipeStart = null;
+function showcase() {
+  const slides = showcaseIds.map(productById).filter(Boolean);
+  showcaseIndex %= slides.length || 1;
+  const images = slides
+    .map((p, i) => `<img src="${imageUrl(p.image)}" alt="${escape(p.name)}" loading="lazy" width="900" height="900" draggable="false"${i === showcaseIndex ? ' class="is-active"' : ' aria-hidden="true"'}/>`)
+    .join("");
+  if (slides.length < 2) return images;
+  const dots = slides
+    .map((p, i) => `<button type="button" class="showcase-dot" data-action="slide" data-index="${i}" aria-current="${i === showcaseIndex}" aria-label="${escape(t("slideLabel").replace("{n}", i + 1).replace("{total}", slides.length))}"></button>`)
+    .join("");
+  return `${images}<div class="showcase-dots">${dots}</div>`;
+}
+function showSlide(index) {
+  const root = $(".editorial-image");
+  const images = root?.querySelectorAll(":scope > img") ?? [];
+  if (images.length < 2) return;
+  showcaseIndex = (index + images.length) % images.length;
+  images.forEach((img, i) => {
+    img.classList.toggle("is-active", i === showcaseIndex);
+    if (i === showcaseIndex) img.removeAttribute("aria-hidden");
+    else img.setAttribute("aria-hidden", "true");
+  });
+  root.querySelectorAll(".showcase-dot").forEach((dot, i) => dot.setAttribute("aria-current", String(i === showcaseIndex)));
+}
+function startShowcase() {
+  clearInterval(showcaseTimer);
+  const root = $(".editorial-image");
+  if (!root?.querySelector(".showcase-dots") || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  showcaseTimer = setInterval(() => {
+    if (!root.isConnected) return clearInterval(showcaseTimer);
+    const hovered = matchMedia("(hover: hover)").matches && root.matches(":hover");
+    if (document.hidden || hovered || root.querySelector(":focus-visible")) return;
+    showSlide(showcaseIndex + 1);
+  }, 5000);
+}
+document.addEventListener("pointerdown", (event) => {
+  swipeStart = event.target.closest(".editorial-image") ? { x: event.clientX, y: event.clientY } : null;
+});
+document.addEventListener("pointerup", (event) => {
+  if (!swipeStart || !event.target.closest(".editorial-image")) return;
+  const dx = event.clientX - swipeStart.x;
+  const dy = event.clientY - swipeStart.y;
+  swipeStart = null;
+  if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
+  showSlide(showcaseIndex + (dx < 0 ? 1 : -1));
+  startShowcase();
+});
+// Hero motto ends with a violet heart that never wraps away from the last word.
+const heartIcon = `<svg class="motto-heart" viewBox="0 0 24 22" aria-hidden="true"><path fill="currentColor" d="M12 21.2 10.3 19.6C4.2 14.1 0.5 10.8 0.5 6.6 0.5 3.2 3.1 0.6 6.5 0.6c1.9 0 3.8.9 5.5 2.4C13.7 1.5 15.6.6 17.5.6c3.4 0 6 2.6 6 6 0 4.2-3.7 7.5-9.8 13Z"/></svg>`;
+function heroMotto() {
+  const words = t("heroMotto").split(" ");
+  const last = words.pop();
+  return `<p class="hero-motto">${words.join(" ")} <span class="motto-end">${last}${heartIcon}</span></p>`;
+}
 function render() {
   const page = route().page;
-  if (renderedPage !== page) resetClothingAnimations();
-  else cancelClothingAnimations();
+  if (renderedPage !== page) resetHeroBasket();
   renderedPage = page;
   document.documentElement.lang = state.language;
   const product = page === "product" ? productById(route().productId) : null;
@@ -352,7 +410,8 @@ function render() {
   $(".skip-link").textContent = t("skip");
   $("#app").innerHTML =
     `${header()}${page === "home" ? home() : page === "account" ? account() : page === "product" ? productPage() : catalog()}${footer()}`;
-  syncClothingState();
+  syncHeroBasket();
+  startShowcase();
 }
 function showDialog(dialog) {
   if (!dialog.open) dialog.showModal();
@@ -629,11 +688,16 @@ function info(topic) {
 document.addEventListener("click", (event) => {
   // A click anywhere else closes an open size/condition note.
   if (!event.target.closest('.fact-tip, [data-action="fact-tip"]')) closeFactTips();
+  const basket = event.target.closest(".hero-basket");
+  if (basket) return stowHeroBasket(basket);
   const button = event.target.closest("[data-action]");
   if (!button) return;
   if (button.dataset.action === "fact-tip") return toggleFactTip(button);
+  if (button.dataset.action === "slide") {
+    showSlide(Number(button.dataset.index));
+    return startShowcase();
+  }
   const action = button.dataset.action;
-  if (action === "play-clothing") animateClothing(button);
   if (action === "product") openProduct(button.dataset.id);
   if (action === "favorite") updateFavorite(button.dataset.id);
   if (action === "cart") openCart();

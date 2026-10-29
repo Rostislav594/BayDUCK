@@ -52,3 +52,10 @@ test("the guide tells which foot length suits this pair's insole", async () => {
   assert.deepEqual(footRange(27.5), { from: 26.5, to: 27 });
   assert.deepEqual(footRange(24.5), { from: 23.5, to: 24 });
 });
+
+test("the home showcase has 3–4 photos of existing items", async () => {
+  const { productById, showcaseIds } = await import("../src/data.js");
+  assert.ok(showcaseIds.length >= 3 && showcaseIds.length <= 4);
+  assert.equal(new Set(showcaseIds).size, showcaseIds.length);
+  for (const id of showcaseIds) assert.ok(productById(id)?.image, id);
+});

@@ -455,6 +455,14 @@ main:focus {
   margin-bottom: 2.4%;
   /* The artwork is drawn sideways (opening right); show it upright. */
   rotate: -90deg;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* A click slides the basket behind the B (src/hero-basket.js); it stays hidden. */
+.hero-wordmark .hero-basket.is-stowed {
+  opacity: 0;
+  pointer-events: none;
 }
 .eyebrow {
   font-size: 10px;
@@ -554,8 +562,8 @@ main:focus {
   padding: 7px;
   border-radius: 26px;
   box-shadow:
-    0 12px 30px #00000009,
-    var(--shadow);
+    0 18px 40px #16161624,
+    0 4px 12px #16161614;
   transition: transform 0.35s;
   animation: float-in 0.8s both;
   overflow: hidden;
@@ -918,11 +926,52 @@ main:focus {
   overflow: hidden;
   min-height: 410px;
 }
+.editorial-image {
+  touch-action: pan-y;
+  user-select: none;
+}
+/* Showcase photos lie on top of each other and cross-fade. */
 .editorial-image > img {
   width: 100%;
   height: 100%;
   position: absolute;
   object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+.editorial-image > img.is-active {
+  opacity: 1;
+}
+/* Top right, level with the caption: the bottom row holds the section number. */
+.showcase-dots {
+  position: absolute;
+  z-index: 2;
+  top: 26px;
+  right: 18px;
+  display: flex;
+}
+.showcase-dot {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--pill);
+}
+.showcase-dot::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: var(--pill);
+  background: #ffffff8c;
+  transition: width 0.3s, background 0.3s;
+}
+.showcase-dot[aria-current="true"]::before {
+  width: 18px;
+  background: #fff;
+}
+.showcase-dot:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
 }
 .editorial-image:after {
   content: "";
@@ -2640,6 +2689,9 @@ dialog::backdrop {
 .hero {
   --hero-card-width: clamp(156px, 14vw, 196px);
   --hero-extra-row: 0px;
+  /* How far the bottom card row sits above its old place below the categories;
+     from 1280px the cards are placed by top, and this only trims the hero height. */
+  --hero-lift: 84px;
   min-height: 0;
 }
 .hero .float-one,
@@ -2682,8 +2734,7 @@ dialog::backdrop {
   gap: 4px;
 }
 .hero-bottom {
-  /* Leave a lane for the cartoon sneakers between categories and cards. */
-  padding: 24px 0 calc(var(--hero-card-width) + 190px + var(--hero-extra-row));
+  padding: 24px 0 calc(var(--hero-card-width) + 190px - var(--hero-lift) + var(--hero-extra-row));
 }
 @media (min-width: 781px) {
   .hero {
@@ -2702,6 +2753,60 @@ dialog::backdrop {
 .hero .floating-note {
   display: none;
 }
+/* Handwritten black motto with a violet heart in the hero's upper-left corner, where the sand pair used to sit. */
+.hero-motto {
+  position: absolute;
+  z-index: 3;
+  left: 16px;
+  top: 20px;
+  max-width: 150px;
+  text-wrap: balance;
+  font-family: Caveat, "Segoe Print", "Comic Sans MS", cursive;
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: 0;
+  color: var(--ink);
+  rotate: -11deg;
+  transform-origin: left top;
+  pointer-events: none;
+}
+.motto-end {
+  white-space: nowrap;
+}
+.motto-heart {
+  display: inline-block;
+  width: 0.8em;
+  height: 0.75em;
+  margin-left: 0.2em;
+  vertical-align: -0.05em;
+  color: var(--violet);
+  rotate: 8deg;
+}
+@media (max-width: 360px) {
+  .hero-motto {
+    max-width: 122px;
+    font-size: 17px;
+  }
+}
+@media (min-width: 781px) {
+  .hero-motto {
+    left: 3%;
+    top: 64px;
+    max-width: min(300px, calc(50% - 110px));
+    font-size: 23px;
+  }
+}
+@media (min-width: 1280px) {
+  .hero-motto {
+    /* Left of the upper-left card: its tilted box starts at about
+       0.646 × (50% − 260px) − 0.525 × card width (see .float-four). */
+    left: 16px;
+    top: 104px;
+    max-width: min(260px, calc(0.646 * (50% - 260px) - 0.525 * var(--hero-card-width) - 40px));
+    font-size: clamp(22px, 1.6vw, 30px);
+  }
+}
 @media (min-width: 781px) and (max-width: 1000px) {
   .hero .category-pills {
     gap: 7px;
@@ -2719,6 +2824,24 @@ dialog::backdrop {
 @media (max-width: 780px) {
   .hero {
     --hero-card-width: clamp(112px, 26vw, 140px);
+  }
+}
+/* The bottom cards sit about 20px below the categories (measured per range;
+   min-width steps only, so fractional widths never fall between two ranges). */
+@media (min-width: 561px) {
+  .hero {
+    --hero-lift: 53px;
+  }
+}
+/* From here the left card sits beside the categories, not under them. */
+@media (min-width: 901px) {
+  .hero {
+    --hero-lift: 80px;
+  }
+}
+@media (min-width: 1001px) {
+  .hero {
+    --hero-lift: 110px;
   }
 }
 @media (max-width: 600px) {
@@ -3224,7 +3347,9 @@ dialog::backdrop {
    2026-10-26, saved in artifacts/hero-layout.json). Upper cards keep their share of
    the gutter between the 520px logo column and the hero edge; the bottom row keeps
    its share of the hero width. Sizes are multiples of the base card width. Below
-   1280px there is not enough room, so the previous arrangement stays there. */
+   1280px there is not enough room, so the previous arrangement stays there.
+   2026-10-29: with the clothing toys gone, the bottom row moved up towards the
+   categories, each card about 20px from the categories or the card above it. */
 @media (min-width: 1280px) {
   .hero .floating-card.floating-card {
     right: auto;
@@ -3233,19 +3358,19 @@ dialog::backdrop {
   }
   .hero .float-one {
     left: 11.37%;
-    top: 367px;
+    top: 317px;
     width: var(--hero-card-width);
     rotate: -11deg;
   }
   .hero .float-two {
     left: 86.91%;
-    top: 433px;
+    top: 348px;
     width: calc(var(--hero-card-width) * 0.862);
     rotate: 12deg;
   }
   .hero .float-three {
     left: 52.79%;
-    top: 456px;
+    top: 409px;
     width: calc(var(--hero-card-width) * 0.791);
     rotate: -4deg;
   }
@@ -3263,25 +3388,19 @@ dialog::backdrop {
   }
   .hero .float-six {
     left: 30.32%;
-    top: 511px;
+    top: 413px;
     width: calc(var(--hero-card-width) * 0.883);
     rotate: -7deg;
   }
   .hero .float-seven {
     left: 70.5%;
-    top: 537px;
+    top: 424px;
     width: calc(var(--hero-card-width) * 0.719);
     rotate: 22deg;
   }
   .hero .float-six > span,
   .hero .float-four > span {
     font-size: 12px;
-  }
-}
-@media (min-width: 1280px) and (max-width: 1439px) {
-  /* Room for the high-top toy below it on narrower laptops. */
-  .hero .float-five {
-    top: 56px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

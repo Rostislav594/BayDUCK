@@ -1,4 +1,5 @@
 // Run with Playwright MCP browser_run_code_unsafe filename, with npm run dev active.
+// A click on the decorative hero basket slides it behind the letter B.
 async (browserPage) => {
   const context = await browserPage.context().browser().newContext();
   try {
@@ -6,97 +7,70 @@ async (browserPage) => {
     page.on('pageerror', error => errors.push(error.message));
     page.on('console', message => { if (message.type()==='error') errors.push(message.text()); });
     const check = (condition,name) => { if (!condition) throw new Error(name); results.push(name); };
-    const idle = () => page.waitForFunction(()=>!document.querySelector('.clothing-flight-layer'));
-    const state = () => page.evaluate(()=>({
-      basket:getComputedStyle(document.querySelector('.hero-basket')).opacity,
-      hidden:document.querySelectorAll('.clothing-toy[hidden]').length,
-      animations:document.querySelector('.hero-basket').getAnimations().length,
-      layers:document.querySelectorAll('.clothing-flight-layer').length,
-    }));
+    const basket = () => page.locator('.hero-basket');
+    const state = () => page.evaluate(()=>{
+      const b=document.querySelector('.hero-basket');
+      return {opacity:getComputedStyle(b).opacity, stowed:b.classList.contains('is-stowed'), animations:b.getAnimations().length};
+    });
+    const settle = () => page.waitForFunction(()=>document.querySelector('.hero-basket').getAnimations().length===0);
     await page.goto('http://127.0.0.1:5173/#home');
     const scale = page.viewportSize().width / await page.evaluate(()=>innerWidth);
-    await page.setViewportSize({width:Math.round(621*scale),height:Math.round(950*scale)});
+    await page.setViewportSize({width:Math.round(1280*scale),height:Math.round(900*scale)});
     await page.emulateMedia({reducedMotion:'no-preference'});
-    const fresh = async () => {
-      await page.reload();
-      await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));
-      await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
-    };
-    const finalStage = async () => {
-      for (const [index,id] of ['sneaker','backpack','high-top','sand-pair','mint-pair'].entries()) {
-        await page.locator(`[data-garment="${id}"]`).click();
-        await page.evaluate(()=>document.querySelector('.clothing-flight-layer').getAnimations({subtree:true}).forEach(a=>a.finish()));
-        if (index<4) await idle();
-      }
-      await page.locator('.clothing-flight-layer[data-phase="stowing"]').waitFor();
-      await page.evaluate(()=>document.querySelector('.hero-basket').getAnimations().forEach(a=>a.pause()));
-    };
-    await fresh();
+
+    check(await page.locator('.clothing-toy, .playful-clothes, .clothing-hint').count()===0, 'The clothing game is gone from the hero');
+    check((await state()).opacity==='1' && await basket().evaluate(b=>getComputedStyle(b).cursor==='pointer'), 'Basket is visible and clickable');
     const logoBefore = await page.locator('.hero-brand-mark').boundingBox();
-    await finalStage();
-    await page.evaluate(()=>{const a=document.querySelector('.hero-basket').getAnimations()[0];a.currentTime=a.effect.getTiming().duration*.25;});
+    await basket().click();
+    const exit = await basket().evaluate(b=>{
+      const a=b.getAnimations()[0];
+      a.pause();
+      a.currentTime=a.effect.getTiming().duration*.5;
+      const style=getComputedStyle(b), logo=document.querySelector('.hero-brand-mark');
+      return {moves:parseFloat(style.translate)>0, clips:style.clipPath!=='none', behind:Number(style.zIndex)<Number(getComputedStyle(logo).zIndex), smooth:a.effect.getTiming().duration===900 && a.effect.getTiming().easing.includes('cubic-bezier')};
+    });
+    check(exit.moves && exit.clips && exit.behind && exit.smooth, 'Click slides the basket smoothly right under the logo with progressive occlusion');
     const logoDuring = await page.locator('.hero-brand-mark').boundingBox();
-    check(Math.abs(logoBefore.x-logoDuring.x)<1 && Math.abs(logoBefore.y-logoDuring.y)<1 && Math.abs(logoBefore.width-logoDuring.width)<1, 'Final basket movement keeps the logo in place');
-    await page.screenshot({path:'C:/Users/User/Desktop/BayDUCK/artifacts/basket-finale-moving.png'});
-    await page.evaluate(()=>document.querySelector('.hero-basket').getAnimations().forEach(a=>a.finish()));
-    await idle();
-    let current=await state();
-    check(current.basket==='0' && current.hidden===5 && current.animations===0, 'After the final exit, basket and all five items stay hidden without leftover animations');
-    await page.screenshot({path:'C:/Users/User/Desktop/BayDUCK/artifacts/basket-finale-complete.png'});
+    check(Math.abs(logoBefore.x-logoDuring.x)<1 && Math.abs(logoBefore.y-logoDuring.y)<1, 'The logo stays in place');
+    await basket().evaluate(b=>b.getAnimations().forEach(a=>a.finish()));
+    await settle();
+    let current = await state();
+    check(current.opacity==='0' && current.stowed && current.animations===0, 'After the exit the basket stays hidden without leftover animations');
+    check(await page.locator('.cart-count').first().textContent()==='0', 'The decorative basket does not touch the real cart');
+
     await page.locator('#language').selectOption('ru');
-    current=await state();
-    check(current.basket==='0' && current.hidden===5, 'Language changes preserve the completed finale');
+    current = await state();
+    check(current.opacity==='0' && current.stowed, 'Language change keeps the basket hidden');
+    await page.evaluate(()=>window.scrollBy({top:80,behavior:'instant'}));
+    await page.setViewportSize({width:Math.round(390*scale),height:Math.round(900*scale)});
+    current = await state();
+    check(current.opacity==='0', 'Scrolling and resizing keep the basket hidden');
+    await page.locator('#language').selectOption('uk');
+
     await page.evaluate(()=>{location.hash='catalog';});
     await page.locator('.catalog-page').waitFor();
     await page.evaluate(()=>{location.hash='home';});
     await page.locator('.hero').waitFor();
-    current=await state();
-    check(current.basket==='1' && current.hidden===0, 'Leaving the shop page and returning restores basket and every item');
+    current = await state();
+    check(current.opacity==='1' && !current.stowed, 'Leaving the home page and returning brings the basket back');
 
-    await fresh();
-    await finalStage();
-    await page.evaluate(()=>window.scrollBy({top:80,behavior:'instant'}));
-    await idle();
-    current=await state();
-    check(current.basket==='0' && current.hidden===5 && current.animations===0, 'Scrolling during the exit settles the completed state cleanly');
-
-    await fresh();
-    await finalStage();
+    // A re-render in the middle of the exit hides the new basket straight away.
+    await basket().click();
     await page.locator('#language').selectOption('en');
-    await idle();
-    current=await state();
-    check(current.basket==='0' && current.hidden===5 && current.animations===0, 'Re-rendering during the exit keeps the basket hidden and cancels its motion');
-
-    await fresh();
-    await finalStage();
-    await page.setViewportSize({width:Math.round(390*scale),height:Math.round(950*scale)});
-    await idle();
-    current=await state();
-    check(current.basket==='0' && current.hidden===5, 'Resizing during the exit keeps the completed state');
-    // Headless tabs remain visible; exercise the browser visibility event explicitly.
-    await page.evaluate(()=>{
-      Object.defineProperty(document,'hidden',{configurable:true,value:true});
-      document.dispatchEvent(new Event('visibilitychange'));
-      delete document.hidden;
-    });
-    current=await state();
-    check(current.basket==='1' && current.hidden===0 && current.animations===0, 'Changing browser tabs restores basket and items together');
+    current = await state();
+    check(current.opacity==='0' && current.stowed && current.animations===0, 'Re-rendering during the exit keeps the basket hidden');
+    await page.locator('#language').selectOption('uk');
 
     await page.emulateMedia({reducedMotion:'reduce'});
-    await fresh();
-    await finalStage();
-    const reduced=await page.locator('.hero-basket').evaluate(b=>b.getAnimations().every(a=>a.effect.getKeyframes().every(f=>!('translate' in f) && !('rotate' in f) && !('scale' in f))));
-    check(reduced, 'Reduced motion uses opacity only for the final basket exit');
-    await page.evaluate(()=>document.querySelector('.hero-basket').getAnimations().forEach(a=>a.finish()));
-    await idle();
-    current=await state();
-    check(current.basket==='0' && current.hidden===5, 'Reduced motion reaches the same completed state');
+    await page.reload();
+    check((await state()).opacity==='1', 'Reload restores the basket');
+    await basket().click();
+    const reduced = await basket().evaluate(b=>b.getAnimations().every(a=>a.effect.getKeyframes().every(f=>!('translate' in f) && !('clipPath' in f))));
+    check(reduced, 'Reduced motion uses opacity only');
+    await settle();
+    check((await state()).opacity==='0', 'Reduced motion reaches the same hidden state');
     await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true})));
-    current=await state();
-    check(current.basket==='1' && current.hidden===0, 'Back/forward cache restoration also restores the basket');
-    await fresh();
-    current=await state();
-    check(current.basket==='1' && current.hidden===0, 'Refreshing restores the complete scene');
+    check((await state()).opacity==='1', 'Back/forward cache restoration brings the basket back');
     check(errors.length===0, `No browser errors: ${errors.join('; ')}`);
     return {passed:results.length,results,errors};
   } finally {

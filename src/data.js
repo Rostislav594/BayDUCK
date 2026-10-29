@@ -212,6 +212,8 @@ export const products = [
     },
   },
 ];
+// Home showcase: 3–4 photos that change every 5 s (later: photos of the featured exclusive item).
+export const showcaseIds = ["urban", "red", "retro", "court"];
 // Owner-managed items can be hidden or sold (see src/catalog.js); demo items have no status.
 export const isAvailable = (product) => (product?.status ?? "active") === "active";
 // Shipped photos are file names in assets/products/; owner uploads are data URLs.

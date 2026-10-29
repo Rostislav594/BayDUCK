@@ -1,10 +1,10 @@
 // Internal owner tool, not storefront UI. Open http://127.0.0.1:5173/?edit-layout#home
-// on the local dev server, drag the hero product cards and cartoon clothing,
+// on the local dev server, drag the hero product cards,
 // adjust tilt and size, then save: the layout goes to artifacts/hero-layout.json
 // for the developer to turn into CSS. Its texts are Russian on purpose and stay
 // out of the store dictionaries.
 const draftKey = "buyduck:layout-draft";
-const itemSelector = ".hero .floating-card, .hero .clothing-toy";
+const itemSelector = ".hero .floating-card";
 let draft = loadDraft();
 let selected = null;
 let drag = null;
@@ -23,11 +23,8 @@ function storeDraft() {
   } catch {}
 }
 const hero = () => document.querySelector(".hero");
-const isToy = (item) => item.classList.contains("clothing-toy");
-const itemKey = (item) =>
-  isToy(item) ? `toy-${item.dataset.garment}` : [...item.classList].find((c) => c.startsWith("float-"));
-const itemName = (item) =>
-  isToy(item) ? item.getAttribute("aria-label")?.split(" — ")[0] || itemKey(item) : item.querySelector("img")?.alt || itemKey(item);
+const itemKey = (item) => [...item.classList].find((c) => c.startsWith("float-"));
+const itemName = (item) => item.querySelector("img")?.alt || itemKey(item);
 const visibleItems = () => [...document.querySelectorAll(itemSelector)].filter((item) => item.getClientRects().length);
 
 // Current geometry in hero pixels, measured around the centre so the tilt and
@@ -40,7 +37,6 @@ function measure(item) {
     left: Math.round(r.left + r.width / 2 - h.left - item.offsetWidth / 2),
     top: Math.round(r.top + r.height / 2 - h.top - item.offsetHeight / 2),
     width: Math.round(item.offsetWidth),
-    ...(isToy(item) ? { height: Math.round(item.offsetHeight) } : {}),
     rotate: Math.round(parseFloat(style.rotate) || 0),
   };
 }
@@ -68,8 +64,6 @@ function edit(item, change) {
   const key = itemKey(item);
   const current = draft[key] || measure(item);
   const next = { ...current, ...change };
-  // Toys keep their proportions when resized.
-  if (isToy(item) && change.width) next.height = Math.round(change.width * (current.height / current.width));
   draft[key] = next;
   place(item, next);
   storeDraft();
@@ -107,7 +101,7 @@ function snapshot() {
     const value = draft[itemKey(item)] || measure(item);
     return {
       id: itemKey(item),
-      ...(isToy(item) ? { garment: item.dataset.garment } : { product: item.dataset.id }),
+      product: item.dataset.id,
       moved: Boolean(draft[itemKey(item)]),
       ...value,
       height: value.height || item.offsetHeight,
@@ -123,8 +117,7 @@ function snapshot() {
     savedAt: new Date().toISOString(),
     viewport: { width: innerWidth, height: innerHeight },
     hero: { width: Math.round(h.width), height: Math.round(h.height) },
-    cards: items.filter((item) => !isToy(item)).map(describe),
-    toys: items.filter(isToy).map(describe),
+    cards: items.map(describe),
   };
 }
 
@@ -164,8 +157,8 @@ document.addEventListener("pointerup", () => {
   if (drag?.moved) status("Позиция изменена — не забудьте сохранить");
   drag = null;
 });
-// In edit mode a click selects the item instead of opening a product or
-// sending clothing to the basket (keyboard activation also arrives as a click).
+// In edit mode a click selects the item instead of opening a product
+// (keyboard activation also arrives as a click).
 window.addEventListener(
   "click",
   (event) => {
@@ -237,8 +230,8 @@ panel.addEventListener("click", async (event) => {
 
 const style = document.createElement("style");
 style.textContent = `
-.layout-edit .hero .floating-card, .layout-edit .hero .clothing-toy { cursor: grab; touch-action: none; transition: none; animation: none; user-select: none; }
-.layout-edit .hero .floating-card:active, .layout-edit .hero .clothing-toy:active { cursor: grabbing; }
+.layout-edit .hero .floating-card { cursor: grab; touch-action: none; transition: none; animation: none; user-select: none; }
+.layout-edit .hero .floating-card:active { cursor: grabbing; }
 .layout-edit .hero .floating-card:hover { transform: none; }
 .layout-edit .hero .floating-card img { pointer-events: none; }
 .layout-edit .hero .is-layout-selected { outline: 3px solid #5433eb; outline-offset: 3px; z-index: 5; }
@@ -268,10 +261,10 @@ async function start() {
     draft = {};
     try {
       const saved = await fetch("/__layout").then((r) => (r.ok ? r.json() : null));
-      for (const item of [...(saved?.cards || []), ...(saved?.toys || [])]) {
+      for (const item of saved?.cards || []) {
         const id = item.id || item.card;
         if (item.moved && id)
-          draft[id] = { left: item.left, top: item.top, width: item.width, rotate: item.rotate, ...(item.garment ? { height: item.height } : {}) };
+          draft[id] = { left: item.left, top: item.top, width: item.width, rotate: item.rotate };
       }
       if (Object.keys(draft).length) status("Загружена последняя сохранённая раскладка");
     } catch {}
