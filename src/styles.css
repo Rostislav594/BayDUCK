@@ -1280,6 +1280,24 @@ dialog::backdrop {
   background: #14141466;
   backdrop-filter: blur(5px);
 }
+/* Every window keeps its header in place and scrolls only its body, so the
+   scrollbar stays inside the rounded window instead of running along its edge. */
+dialog[open] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+dialog > .dialog-header {
+  flex: none;
+}
+.dialog-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #c9c4f3 transparent;
+}
 .product-dialog {
   width: min(920px, calc(100% - 40px));
   max-height: calc(100dvh - 60px);
@@ -1423,14 +1441,13 @@ dialog::backdrop {
   height: 100dvh;
   max-height: 100dvh;
   border-radius: 28px 0 0 28px;
-  padding-bottom: 24px;
 }
 .cart-dialog > .dialog-header {
   padding: 18px 24px;
-  position: sticky;
-  top: 0;
-  z-index: 2;
   background: white;
+}
+.cart-dialog > .dialog-body {
+  padding-bottom: 24px;
 }
 .cart-items {
   padding: 10px 24px;
@@ -1582,32 +1599,19 @@ dialog::backdrop {
 .info-dialog {
   width: 500px;
   max-width: calc(100% - 32px);
-  border-radius: 24px;
-}
-/* Long content (foot guide): the header stays, the body scrolls inside the rounded window. */
-.info-dialog[open]:has(.foot-guide) {
-  display: flex;
-  flex-direction: column;
   max-height: calc(100dvh - 48px);
-  overflow: hidden;
-}
-.info-dialog .foot-guide {
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: #c9c4f3 transparent;
+  border-radius: 24px;
 }
 .info-dialog > .dialog-header {
   padding: 16px 24px;
 }
-.info-dialog > p {
+.info-dialog .dialog-body > p {
   margin: 24px;
   font-size: 15px;
   line-height: 1.8;
   color: var(--muted);
 }
-.info-dialog > .button {
+.info-dialog .dialog-body > .button {
   margin: 0 24px 24px;
 }
 .toast {
@@ -2898,6 +2902,80 @@ dialog::backdrop {
 }
 .motto-end {
   white-space: nowrap;
+}
+/* "Bestsellers" over the hero cards, in the motto's handwriting (phones only). */
+.hero-bestsellers {
+  display: none;
+}
+@media (max-width: 780px) {
+  .hero-bestsellers {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    margin: 18px 0 0;
+    font-family: Caveat, "Segoe Print", "Comic Sans MS", cursive;
+    font-size: 26px;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--ink);
+    rotate: -4deg;
+  }
+  .hero-bestsellers > svg {
+    width: 26px;
+    height: 26px;
+    margin-bottom: -12px;
+    color: var(--violet);
+  }
+  /* Bestseller cards hover in the air: a slow bob and sway, and once per cycle
+     a short lift like a mouse hover. Different lengths keep them out of step. */
+  .hero .float-one,
+  .hero .float-two,
+  .hero .float-three {
+    animation:
+      float-in 0.8s both,
+      card-drift 8s ease-in-out 0.8s infinite;
+  }
+  .hero .float-two {
+    animation-duration: 0.8s, 9.5s;
+    animation-delay: 0s, 2.2s;
+  }
+  .hero .float-three {
+    animation-duration: 0.8s, 8.8s;
+    animation-delay: 0s, 1.4s;
+  }
+}
+@keyframes card-drift {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  20% {
+    transform: translateY(-5px) rotate(1deg);
+  }
+  40% {
+    transform: translateY(0) rotate(0deg);
+  }
+  55% {
+    transform: translateY(-4px) rotate(-1deg);
+  }
+  70% {
+    transform: translateY(0) rotate(0deg);
+    box-shadow:
+      0 18px 40px #16161624,
+      0 4px 12px #16161614;
+  }
+  78% {
+    transform: translateY(-10px) rotate(2deg) scale(1.04);
+    box-shadow:
+      0 26px 48px #1616162e,
+      0 6px 16px #1616161a;
+  }
+  88% {
+    transform: translateY(0) rotate(0deg);
+    box-shadow:
+      0 18px 40px #16161624,
+      0 4px 12px #16161614;
+  }
 }
 .motto-heart {
   display: inline-block;

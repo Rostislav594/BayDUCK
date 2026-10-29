@@ -256,7 +256,7 @@ const heroProduct = (n) => {
   return list.length ? list[n % list.length] : null;
 };
 function home() {
-  return `<main id="main" tabindex="-1"><section class="hero" aria-labelledby="hero-title"><div class="hero-copy"><h1 id="hero-title" class="hero-wordmark"><img class="hero-basket" src="assets/branding/shopping-basket-sideways-v3.png" alt="" aria-hidden="true" width="1280" height="1280" /><img class="hero-brand-mark" src="assets/branding/buyduck-wordmark-mascot-v3.png" alt="BuyDUCK" width="1875" height="839" fetchpriority="high" /></h1>${searchForm()}</div>${floatingCard(heroProduct(0), "float-one")}${floatingCard(heroProduct(3), "float-two")}${floatingCard(heroProduct(1), "float-three")}${floatingCard(heroProduct(2), "float-four")}${floatingCard(heroProduct(4), "float-five")}${floatingCard(heroProduct(3), "float-six")}${floatingCard(heroProduct(0), "float-seven")}<span class="floating-note note-left">${t("everydayNote").replace("\n", "<br/>")}</span><span class="floating-note note-right">${t("ownWayNote").replace("\n", "<br/>")}</span>${heroMotto()}<div class="hero-bottom">${categoryPills("all", true)}</div></section><div class="content-wrap"><section class="arrivals" id="arrivals"><div class="section-heading"><div><p class="eyebrow">${t("rotationLabel")} / 01</p><h2>${t("arrivals")}</h2><p>${t("arrivalsSub")}</p></div><a class="text-link" href="#catalog">${t("allProducts")} ${icon("arrow")}</a></div><div class="product-grid">${newestProducts(4).map(productCard).join("")}</div></section><section class="editorial"><div class="editorial-copy"><p class="eyebrow">${t("collection")}</p><h2>${t("storyTitle").replace("\n", "<br/>")}</h2><p>${t("storyCopy")}</p><a href="#catalog?category=clothing" class="button dark">${t("storyButton")} ${icon("arrow")}</a><span class="editorial-footnote">${t("storyNote")} ↗</span></div><div class="editorial-image" role="group" aria-roledescription="carousel" aria-label="${escape(t("showcaseLabel"))}">${showcase()}<span class="image-caption">BuyDUCK<br/><small>${t("outsideLabel")}</small></span><span class="image-number">02 / ${t("cultureLabel")}</span></div></section><section class="category-section"><div class="section-heading"><div><p class="eyebrow">${t("categoriesLabel")} / 02</p><h2>${t("categories")}</h2></div></div><div class="category-grid">${[
+  return `<main id="main" tabindex="-1"><section class="hero" aria-labelledby="hero-title"><div class="hero-copy"><h1 id="hero-title" class="hero-wordmark"><img class="hero-basket" src="assets/branding/shopping-basket-sideways-v3.png" alt="" aria-hidden="true" width="1280" height="1280" /><img class="hero-brand-mark" src="assets/branding/buyduck-wordmark-mascot-v3.png" alt="BuyDUCK" width="1875" height="839" fetchpriority="high" /></h1>${searchForm()}</div>${floatingCard(heroProduct(0), "float-one")}${floatingCard(heroProduct(3), "float-two")}${floatingCard(heroProduct(1), "float-three")}${floatingCard(heroProduct(2), "float-four")}${floatingCard(heroProduct(4), "float-five")}${floatingCard(heroProduct(3), "float-six")}${floatingCard(heroProduct(0), "float-seven")}<span class="floating-note note-left">${t("everydayNote").replace("\n", "<br/>")}</span><span class="floating-note note-right">${t("ownWayNote").replace("\n", "<br/>")}</span>${heroMotto()}<div class="hero-bottom">${categoryPills("all", true)}<p class="hero-bestsellers">${t("heroBestsellers")}${doodleArrow}</p></div></section><div class="content-wrap"><section class="arrivals" id="arrivals"><div class="section-heading"><div><p class="eyebrow">${t("rotationLabel")} / 01</p><h2>${t("arrivals")}</h2><p>${t("arrivalsSub")}</p></div><a class="text-link" href="#catalog">${t("allProducts")} ${icon("arrow")}</a></div><div class="product-grid">${newestProducts(4).map(productCard).join("")}</div></section><section class="editorial"><div class="editorial-copy"><p class="eyebrow">${t("collection")}</p><h2>${t("storyTitle").replace("\n", "<br/>")}</h2><p>${t("storyCopy")}</p><a href="#catalog" class="button dark">${t("storyButton")} ${icon("arrow")}</a><span class="editorial-footnote">${t("storyNote")} ↗</span></div><div class="editorial-image" role="group" aria-roledescription="carousel" aria-label="${escape(t("showcaseLabel"))}">${showcase()}<span class="image-caption">BuyDUCK<br/><small>${t("outsideLabel")}</small></span><span class="image-number">02 / ${t("cultureLabel")}</span></div></section><section class="category-section"><div class="section-heading"><div><p class="eyebrow">${t("categoriesLabel")} / 02</p><h2>${t("categories")}</h2></div></div><div class="category-grid">${[
     ["sneakers", "white-sneakers.jpg", "shoesTitle", "categoryShoes"],
     ["clothing", "hoodie.jpg", "clothingTitle", "categoryClothing"],
     ["accessories", "backpack.jpg", "accessoriesTitle", "categoryAccessories"],
@@ -393,6 +393,9 @@ document.addEventListener("pointerup", (event) => {
   showSlide(showcaseIndex + (dx < 0 ? 1 : -1));
   startShowcase();
 });
+// Handwritten "Bestsellers" over the hero cards on phones, with a violet
+// doodled arrow down to them.
+const doodleArrow = `<svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5c8 1 14 7 14 17M13 18l5 5 4-6"/></svg>`;
 // Hero motto ends with a violet heart that never wraps away from the last word.
 const heartIcon = `<svg class="motto-heart" viewBox="0 0 24 22" aria-hidden="true"><path fill="currentColor" d="M12 21.2 10.3 19.6C4.2 14.1 0.5 10.8 0.5 6.6 0.5 3.2 3.1 0.6 6.5 0.6c1.9 0 3.8.9 5.5 2.4C13.7 1.5 15.6.6 17.5.6c3.4 0 6 2.6 6 6 0 4.2-3.7 7.5-9.8 13Z"/></svg>`;
 function heroMotto() {
@@ -567,7 +570,7 @@ function openFootGuide() {
   const tips = ["footTipEvening", "footTipBoth", "footTipSpare"].map((key) => `<li>${icon("check")}${t(key)}</li>`).join("");
   const dialog = $("#info-dialog");
   dialog.setAttribute("aria-label", t("footGuideTitle"));
-  dialog.innerHTML = `<div class="dialog-header"><h2>${t("footGuideTitle")}</h2>${iconButton("close", "close", t("close"))}</div><div class="foot-guide"><div class="foot-guide-hero">${footRulerIcon}<div><p class="eyebrow">${t("footGuideThisPair")} · ${escape(p.name)}</p><strong>${t("footGuideInsole").replace("{cm}", cmNumber(p.insoleCm))}</strong><span>${t("footGuideFits").replace("{from}", cmNumber(range.from)).replace("{to}", cmNumber(range.to))}</span></div></div><ol class="foot-steps">${steps}</ol><ul class="foot-tips">${tips}</ul></div>`;
+  dialog.innerHTML = `<div class="dialog-header"><h2>${t("footGuideTitle")}</h2>${iconButton("close", "close", t("close"))}</div><div class="dialog-body foot-guide"><div class="foot-guide-hero">${footRulerIcon}<div><p class="eyebrow">${t("footGuideThisPair")} · ${escape(p.name)}</p><strong>${t("footGuideInsole").replace("{cm}", cmNumber(p.insoleCm))}</strong><span>${t("footGuideFits").replace("{from}", cmNumber(range.from)).replace("{to}", cmNumber(range.to))}</span></div></div><ol class="foot-steps">${steps}</ol><ul class="foot-tips">${tips}</ul></div>`;
   showDialog(dialog);
   dialog.querySelector(".icon-button").focus();
 }
@@ -675,7 +678,7 @@ function renderCart() {
       .join(
         "",
       )}</div><div class="cart-summary"><div class="cart-total"><span>${t("total")}</span><strong>${money(cartTotal(state.cart))}</strong></div><button class="button dark" data-action="checkout">${t("checkout")} ${icon("arrow")}</button><p class="product-note">${t("checkoutCopy")}</p></div>`;
-  dialog.innerHTML = `<div class="dialog-header"><h2>${t("cart")} <span class="cart-count">${cartCount(state.cart)}</span></h2>${iconButton("close", "close", t("close"))}</div>${content}`;
+  dialog.innerHTML = `<div class="dialog-header"><h2>${t("cart")} <span class="cart-count">${cartCount(state.cart)}</span></h2>${iconButton("close", "close", t("close"))}</div><div class="dialog-body">${content}</div>`;
 }
 function renderAuth() {
   const dialog = $("#auth-dialog");
@@ -691,7 +694,7 @@ function renderAuth() {
     body = `<form id="forgot-form" class="account-form" novalidate><p>${t("forgotCopy")}</p>${email}<p class="form-success" role="status" hidden>${t("forgotSent")}</p>${formError()}<button class="button dark" type="submit">${t("sendResetLink")}</button></form><p class="auth-switch"><button type="button" class="text-button" data-action="auth-view" data-view="signin">← ${t("backToSignIn")}</button></p>`;
   else
     body = `<form id="signin-form" class="account-form" novalidate>${email}${passwordField("password", t("password"), "current-password")}<div class="auth-row">${remember}<button type="button" class="text-button" data-action="auth-view" data-view="forgot">${t("forgotPassword")}</button></div>${formError()}<button class="button dark" type="submit">${t("signIn")} ${icon("arrow")}</button></form><p class="auth-switch">${t("noAccount")} <button type="button" class="text-button" data-action="auth-view" data-view="signup">${t("signUp")}</button></p>`;
-  dialog.innerHTML = `<div class="dialog-header"><h2>${title}</h2>${iconButton("close", "close", t("close"))}</div><div class="auth-body">${body}<p class="auth-note">${t("authDemoNote")}</p></div>`;
+  dialog.innerHTML = `<div class="dialog-header"><h2>${title}</h2>${iconButton("close", "close", t("close"))}</div><div class="dialog-body auth-body">${body}<p class="auth-note">${t("authDemoNote")}</p></div>`;
 }
 function openAuth(view = "signin", returnTo = null) {
   state.authView = view;
@@ -748,17 +751,33 @@ function updateFavorite(id) {
     ? state.favorites.filter((value) => value !== id)
     : [...state.favorites, id];
   save("favorites");
-  const scroll = window.scrollY;
-  render();
-  window.scrollTo(0, scroll);
-  $(`[data-action="favorite"][data-id="${id}"]`)?.focus({
-    preventScroll: true,
-  });
+  // The favourites list itself changes, so only that page is drawn again.
+  if (route().page === "favorites") {
+    const scroll = window.scrollY;
+    render();
+    window.scrollTo(0, scroll);
+    $(`[data-action="favorite"][data-id="${id}"]`)?.focus({ preventScroll: true });
+    return;
+  }
+  // Elsewhere only the hearts and the header counter change: no redraw, so
+  // photos, card animations and the showcase keep running.
+  const active = state.favorites.includes(id);
+  for (const button of document.querySelectorAll(`[data-action="favorite"][data-id="${id}"]`)) {
+    button.classList.toggle("is-favorite", active);
+    button.setAttribute("aria-pressed", String(active));
+    button.setAttribute("aria-label", `${t(active ? "removeFavorite" : "addFavorite")}: ${productById(id).name}`);
+  }
+  const heart = $(".header-heart");
+  if (heart) {
+    heart.querySelector(".count-dot")?.remove();
+    if (state.favorites.length)
+      heart.insertAdjacentHTML("beforeend", `<span class="count-dot">${state.favorites.length}</span>`);
+  }
 }
 function info(topic) {
   $("#info-dialog").setAttribute("aria-label", t(topic));
   $("#info-dialog").innerHTML =
-    `<div class="dialog-header"><h2>${t(topic)}</h2>${iconButton("close", "close", t("close"))}</div><p>${t(topic + "Copy")}</p><button class="button dark" data-action="close">${t("close")}</button>`;
+    `<div class="dialog-header"><h2>${t(topic)}</h2>${iconButton("close", "close", t("close"))}</div><div class="dialog-body"><p>${t(topic + "Copy")}</p><button class="button dark" data-action="close">${t("close")}</button></div>`;
   showDialog($("#info-dialog"));
 }
 
