@@ -1,4 +1,5 @@
-import { products, productById } from "./data.js";
+import { imageUrl, productById } from "./data.js";
+import { catalogStore, createProductsAdmin } from "./admin-products.js";
 import { dictionaries } from "./i18n.js";
 import { clearEvents, periodDays, readEvents, summarize } from "./analytics.js";
 import { createOrderStore, orderStatuses, trackingUrl } from "./orders.js";
@@ -59,10 +60,15 @@ function toast(message) {
   clearTimeout(toastTimeout);
   toastTimeout = setTimeout(() => $("#toast").classList.remove("visible"), 2500);
 }
+const productsAdmin = createProductsAdmin({ t, escape, money, icon, toast, render, state });
 function route() {
-  const [page = ""] = location.hash.slice(1).split("?");
+  // #products, #products/new, #products/edit/<id>, #products/olx/<id>
+  const [path = ""] = location.hash.slice(1).split("?");
+  const [page = "", sub = "", id = ""] = path.split("/");
   return {
     page: ["products", "orders", "activity", "olx"].includes(page) ? page : "products",
+    sub,
+    id: decodeURIComponent(id),
   };
 }
 function header(page) {
@@ -85,21 +91,9 @@ function header(page) {
     .join("")}</nav>`;
 }
 
-function productsView() {
-  const rows = products
-    .map(
-      (p) =>
-        `<tr><td><div class="admin-product"><img src="assets/products/${p.image}" alt="" width="56" height="56" loading="lazy"/><span><strong>${escape(p.name)}</strong><small>${escape(p.brand)} · ${t(p.color)}</small></span></div></td><td>${t(p.type)} · ${p.gender === "unisex" ? t("adminUnisex") : t(p.gender)}</td><td class="admin-num">${money(p.price)}</td><td class="admin-sizes">${p.sizes.join(", ")}</td></tr>`,
-    )
-    .join("");
-  return `<section class="admin-card" aria-labelledby="products-title"><div class="admin-card-head"><div><h1 id="products-title">${t("adminProducts")} <span class="admin-count">${products.length}</span></h1><p>${t("adminProductsCopy")}</p></div><button type="button" class="admin-pill" disabled aria-describedby="add-soon">${t("adminAddProduct")}<span id="add-soon" class="admin-soon">${t("adminSoon")}</span></button></div><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th scope="col">${t("adminColProduct")}</th><th scope="col">${t("adminColCategory")}</th><th scope="col" class="admin-num">${t("adminColPrice")}</th><th scope="col">${t("adminColSizes")}</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
-}
-
 function olxView() {
   const actions = [
     ["link", "olxConnect"],
-    ["down", "olxImport"],
-    ["external", "olxPublish"],
   ]
     .map(
       ([glyph, key]) =>
@@ -218,7 +212,7 @@ function orderAdminCard(order) {
   const items = order.items
     .map((item) => {
       const p = productById(item.id);
-      return `<li>${p ? `<img src="assets/products/${p.image}" alt="" width="48" height="48" loading="lazy"/>` : ""}<span><strong>${escape(p ? p.name : item.id)}</strong><small>${t("sizeLabel")}: ${escape(item.size)} · ${number(item.quantity)} ${t("qtyShort")}</small></span><span class="admin-num">${money(item.price * item.quantity)}</span></li>`;
+      return `<li>${p ? `<img src="${imageUrl(p.image)}" alt="" width="48" height="48" loading="lazy"/>` : ""}<span><strong>${escape(p ? p.name : item.id)}</strong><small>${t("sizeLabel")}: ${escape(item.size)} · ${number(item.quantity)} ${t("qtyShort")}</small></span><span class="admin-num">${money(item.price * item.quantity)}</span></li>`;
     })
     .join("");
   const phone = order.customer.phone;
@@ -269,10 +263,11 @@ function render() {
         ? activityView()
         : r.page === "orders"
           ? ordersView()
-          : productsView();
+          : productsAdmin.view(r.sub, r.id);
   $("#admin").innerHTML = `${header(r.page)}<main id="admin-main" class="admin-main" tabindex="-1">${view}</main>`;
 }
 document.addEventListener("click", (event) => {
+  if (productsAdmin.handleClick(event)) return;
   const filter = event.target.closest("[data-order-filter]");
   if (filter && (filter.dataset.orderFilter === "all" || orderStatuses.includes(filter.dataset.orderFilter))) {
     state.orderFilter = filter.dataset.orderFilter;
@@ -293,6 +288,7 @@ document.addEventListener("click", (event) => {
   }
 });
 document.addEventListener("change", (event) => {
+  if (productsAdmin.handleChange(event)) return;
   const statusSelect = event.target.closest("[data-order-status]");
   if (statusSelect) {
     const result = orderStore.update(statusSelect.dataset.orderStatus, { status: statusSelect.value });
@@ -314,8 +310,14 @@ document.addEventListener("change", (event) => {
 window.addEventListener("storage", (event) => {
   if (event.key === "buyduck:events" && route().page === "activity") render();
   if (event.key === "buyduck:orders" && route().page === "orders") render();
+  // A sale in the store tab marks items sold; refresh the list but never wipe an open form.
+  if (event.key === "buyduck:catalog") {
+    catalogStore.load();
+    if (route().page === "products" && !route().sub) render();
+  }
 });
 document.addEventListener("submit", (event) => {
+  if (productsAdmin.handleSubmit(event)) return;
   const form = event.target.closest("[data-waybill]");
   if (!form) return;
   event.preventDefault();

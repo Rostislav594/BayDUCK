@@ -1,4 +1,4 @@
-import { products, productById, productImages } from "./data.js";
+import { imageUrl, isAvailable, products, productById, productImages } from "./data.js";
 import { dictionaries } from "./i18n.js";
 import { clothingMarkup, animateClothing, cancelClothingAnimations, resetClothingAnimations, syncClothingState } from "./playful-clothes.js";
 import {
@@ -7,16 +7,20 @@ import {
   cartCount,
   cartTotal,
   addToCart,
+  inCart,
+  newestProducts,
   relatedProducts,
-  sizeChart,
-  suggestShoeSize,
 } from "./model.js";
 import { track } from "./analytics.js";
 import { createAccountStore } from "./accounts.js";
 import { createOrderStore, npDemoCities, trackingUrl } from "./orders.js";
+import { createCatalogStore, shippedIds } from "./catalog.js";
 
 const accounts = createAccountStore();
 const orders = createOrderStore();
+// The owner's catalog from the admin replaces the demo products before anything reads them.
+const catalogStore = createCatalogStore();
+catalogStore.load();
 
 const $ = (selector) => document.querySelector(selector);
 const escape = (value) =>
@@ -66,7 +70,7 @@ const money = (value) =>
     { uk: "uk-UA", ru: "ru-UA", en: "en-UA" }[state.language],
     { style: "currency", currency: "UAH", maximumFractionDigits: 0 },
   ).format(value);
-const photo = (product) => `assets/products/${product.image}`;
+const photo = (product) => imageUrl(product.image);
 const paths = {
   home: '<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"/>',
   grid: '<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',
@@ -154,8 +158,23 @@ function favoriteButton(id) {
   const active = state.favorites.includes(id);
   return `<button type="button" class="favorite-button ${active ? "is-favorite" : ""}" data-action="favorite" data-id="${id}" aria-pressed="${active}" aria-label="${escape(t(active ? "removeFavorite" : "addFavorite"))}: ${escape(productById(id).name)}">${icon("heart")}</button>`;
 }
+// "42 EU" for shoes, "M" for clothing, "One size" for accessories.
+const sizeText = (product) =>
+  product.size === "ONE SIZE"
+    ? t("oneSize")
+    : product.type === "sneakers"
+      ? `${state.language === "en" ? product.size : product.size.replace(".", ",")} EU`
+      : product.size;
+const insoleText = (product) =>
+  product.insoleCm
+    ? `${new Intl.NumberFormat({ uk: "uk-UA", ru: "ru-UA", en: "en-GB" }[state.language]).format(product.insoleCm)} ${t("cmShort")}`
+    : "";
+const conditionBadge = (product, extra = "") =>
+  product.status === "sold"
+    ? `<span class="condition-badge condition-sold ${extra}">${t("soldBadge")}</span>`
+    : `<span class="condition-badge condition-${product.condition} ${extra}">${t(product.condition === "newTag" ? "condNewTag" : "condUsed")}</span>`;
 function productCard(product, index = 0) {
-  return `<article class="product-card" style="--order:${index}"><div class="product-visual"><a class="product-open" href="#product/${product.id}" aria-label="${escape(product.name)}"><img src="${photo(product)}" alt="${escape(product.name)} — ${escape(t(product.color))}" loading="lazy" width="600" height="600" /></a><span class="product-tag">${t(product.tag === "sale" ? "saleTag" : product.tag)}</span>${favoriteButton(product.id)}<span class="quick-view" aria-hidden="true">${icon("plus")}</span></div><div class="product-meta"><div><p class="product-brand">${product.brand}</p><a class="product-name" href="#product/${product.id}">${product.name}</a><p class="product-kind">${t(product.type)} · ${t(product.color)}</p></div><div class="price"><span>${money(product.price)}</span>${product.oldPrice ? `<del>${money(product.oldPrice)}</del>` : ""}</div></div></article>`;
+  return `<article class="product-card" style="--order:${index}"><div class="product-visual"><a class="product-open" href="#product/${product.id}" aria-label="${escape(product.name)}"><img src="${photo(product)}" alt="${escape(product.name)} — ${escape(t(product.color))}" loading="lazy" width="600" height="600" /></a>${conditionBadge(product, "product-tag")}${favoriteButton(product.id)}<span class="quick-view" aria-hidden="true">${icon("plus")}</span></div><div class="product-meta"><div><p class="product-brand">${product.brand}</p><a class="product-name" href="#product/${product.id}">${product.name}</a><p class="product-kind">${t(product.type)} · ${t(product.color)}</p><p class="product-size">${t("sizeLabel")} <strong>${escape(sizeText(product))}</strong>${product.insoleCm ? ` · ${t("insoleShort")} ${insoleText(product)}` : ""}</p></div><div class="price"><span>${money(product.price)}</span>${product.oldPrice ? `<del>${money(product.oldPrice)}</del>` : ""}</div></div></article>`;
 }
 function searchForm(value = "", compact = false) {
   return `<form class="search-form ${compact ? "compact-search" : ""}" role="search">${icon("search")}<input type="search" name="search" value="${escape(value)}" placeholder="${escape(t("searchPlaceholder"))}" aria-label="${escape(t("search"))}" maxlength="100"/><button type="submit" aria-label="${escape(t("search"))}">${icon("arrow")}</button></form>`;
@@ -196,10 +215,16 @@ function accountLink(cls, active) {
     : `<button type="button" class="${cls}" data-action="auth" aria-label="${escape(t("signIn"))}">${icon("user")}</button>`;
 }
 function floatingCard(product, cls, label) {
+  if (!product) return "";
   return `<button class="floating-card ${cls}" data-action="product" data-id="${product.id}"><img src="${photo(product)}" alt="${escape(product.name)}" width="400" height="400"/><span><span>${label || product.name}</span>${icon("arrow")}</span></button>`;
 }
+// Hero cards pick available items by position, wrapping around a short catalog.
+const heroProduct = (n) => {
+  const list = products.filter(isAvailable);
+  return list.length ? list[n % list.length] : null;
+};
 function home() {
-  return `<main id="main" tabindex="-1"><section class="hero" aria-labelledby="hero-title"><div class="hero-copy"><h1 id="hero-title" class="hero-wordmark"><img class="hero-basket" src="assets/branding/shopping-basket-sideways-v3.png" alt="" aria-hidden="true" width="1280" height="1280" /><img class="hero-brand-mark" src="assets/branding/buyduck-wordmark-mascot-v3.png" alt="BuyDUCK" width="1875" height="839" fetchpriority="high" /></h1>${searchForm()}</div>${floatingCard(products[0], "float-one")}${floatingCard(products[3], "float-two")}${floatingCard(products[1], "float-three")}${floatingCard(products[2], "float-four")}${floatingCard(products[4], "float-five")}${floatingCard(products[3], "float-six")}${floatingCard(products[0], "float-seven")}<span class="floating-note note-left">${t("everydayNote").replace("\n", "<br/>")}</span><span class="floating-note note-right">${t("ownWayNote").replace("\n", "<br/>")}</span><div class="hero-bottom">${categoryPills("all", true)}</div>${clothingMarkup(t)}</section><div class="content-wrap"><section class="arrivals" id="arrivals"><div class="section-heading"><div><p class="eyebrow">${t("rotationLabel")} / 01</p><h2>${t("arrivals")}</h2><p>${t("arrivalsSub")}</p></div><a class="text-link" href="#catalog">${t("allProducts")} ${icon("arrow")}</a></div><div class="product-grid">${products.slice(0, 4).map(productCard).join("")}</div></section><section class="editorial"><div class="editorial-copy"><p class="eyebrow">${t("collection")}</p><h2>${t("storyTitle").replace("\n", "<br/>")}</h2><p>${t("storyCopy")}</p><a href="#catalog?category=clothing" class="button dark">${t("storyButton")} ${icon("arrow")}</a><span class="editorial-footnote">${t("storyNote")} ↗</span></div><div class="editorial-image"><img src="assets/products/urban-sneakers.jpg" alt="${escape(t("sneakers"))}" loading="lazy" width="900" height="900"/><span class="image-caption">BuyDUCK<br/><small>${t("outsideLabel")}</small></span><span class="image-number">02 / ${t("cultureLabel")}</span></div></section><section class="category-section"><div class="section-heading"><div><p class="eyebrow">${t("categoriesLabel")} / 02</p><h2>${t("categories")}</h2></div></div><div class="category-grid">${[
+  return `<main id="main" tabindex="-1"><section class="hero" aria-labelledby="hero-title"><div class="hero-copy"><h1 id="hero-title" class="hero-wordmark"><img class="hero-basket" src="assets/branding/shopping-basket-sideways-v3.png" alt="" aria-hidden="true" width="1280" height="1280" /><img class="hero-brand-mark" src="assets/branding/buyduck-wordmark-mascot-v3.png" alt="BuyDUCK" width="1875" height="839" fetchpriority="high" /></h1>${searchForm()}</div>${floatingCard(heroProduct(0), "float-one")}${floatingCard(heroProduct(3), "float-two")}${floatingCard(heroProduct(1), "float-three")}${floatingCard(heroProduct(2), "float-four")}${floatingCard(heroProduct(4), "float-five")}${floatingCard(heroProduct(3), "float-six")}${floatingCard(heroProduct(0), "float-seven")}<span class="floating-note note-left">${t("everydayNote").replace("\n", "<br/>")}</span><span class="floating-note note-right">${t("ownWayNote").replace("\n", "<br/>")}</span><div class="hero-bottom">${categoryPills("all", true)}</div>${clothingMarkup(t)}</section><div class="content-wrap"><section class="arrivals" id="arrivals"><div class="section-heading"><div><p class="eyebrow">${t("rotationLabel")} / 01</p><h2>${t("arrivals")}</h2><p>${t("arrivalsSub")}</p></div><a class="text-link" href="#catalog">${t("allProducts")} ${icon("arrow")}</a></div><div class="product-grid">${newestProducts(4).map(productCard).join("")}</div></section><section class="editorial"><div class="editorial-copy"><p class="eyebrow">${t("collection")}</p><h2>${t("storyTitle").replace("\n", "<br/>")}</h2><p>${t("storyCopy")}</p><a href="#catalog?category=clothing" class="button dark">${t("storyButton")} ${icon("arrow")}</a><span class="editorial-footnote">${t("storyNote")} ↗</span></div><div class="editorial-image"><img src="assets/products/urban-sneakers.jpg" alt="${escape(t("sneakers"))}" loading="lazy" width="900" height="900"/><span class="image-caption">BuyDUCK<br/><small>${t("outsideLabel")}</small></span><span class="image-number">02 / ${t("cultureLabel")}</span></div></section><section class="category-section"><div class="section-heading"><div><p class="eyebrow">${t("categoriesLabel")} / 02</p><h2>${t("categories")}</h2></div></div><div class="category-grid">${[
     ["sneakers", "white-sneakers.jpg", "shoesTitle", "categoryShoes"],
     ["clothing", "hoodie.jpg", "clothingTitle", "categoryClothing"],
     ["accessories", "backpack.jpg", "accessoriesTitle", "categoryAccessories"],
@@ -317,7 +342,6 @@ function enterRoute() {
   const r = route();
   if (r.page !== "product" || r.productId === state.product) return;
   state.product = r.productId;
-  state.size = null;
   state.photo = 0;
   if (productById(r.productId)) track("product_view", { id: r.productId });
 }
@@ -333,69 +357,45 @@ function productPage() {
   const images = productImages(p);
   const index = Math.min(state.photo || 0, images.length - 1);
   const description = p.description?.[state.language] || p.description?.uk || t("description");
-  const chart = sizeChart(p);
   const thumbs =
     images.length > 1
       ? `<div class="gallery-thumbs">${images
           .map(
             (image, i) =>
-              `<button type="button" class="gallery-thumb ${i === index ? "selected" : ""}" data-action="photo" data-index="${i}" aria-pressed="${i === index}" aria-label="${escape(t("photoOf").replace("{n}", i + 1).replace("{total}", images.length))}"><img src="assets/products/${image}" alt="" width="120" height="120" loading="lazy"/></button>`,
+              `<button type="button" class="gallery-thumb ${i === index ? "selected" : ""}" data-action="photo" data-index="${i}" aria-pressed="${i === index}" aria-label="${escape(t("photoOf").replace("{n}", i + 1).replace("{total}", images.length))}"><img src="${imageUrl(image)}" alt="" width="120" height="120" loading="lazy"/></button>`,
           )
           .join("")}</div>`
       : "";
-  const fit = p.fit
-    ? `<p class="fit-note">${icon("check")}<span><strong>${t("fitLabel")}:</strong> ${t(`fit${capital(p.fit)}`)}</span></p>`
-    : "";
   const specs = [
-    ...(p.fit ? [[t("fitLabel"), t(`fit${capital(p.fit)}`)]] : []),
     ...Object.entries(p.details || {}).map(([label, value]) => [t(`detail${capital(label)}`), t(value)]),
     [t("articleLabel"), p.article],
   ]
     .map(([label, value]) => `<div><dt>${escape(label)}</dt><dd>${escape(value)}</dd></div>`)
     .join("");
-  const sizes = p.sizes
-    .map(
-      (size) =>
-        `<button data-action="size" data-value="${size}" class="size-button ${state.size === size ? "selected" : ""}" aria-pressed="${state.size === size}">${size}</button>`,
-    )
+  const added = inCart(state.cart, p.id);
+  const available = isAvailable(p);
+  const facts = [
+    [t("sizeLabel"), escape(sizeText(p))],
+    ...(p.insoleCm ? [[t("insoleLength"), insoleText(p)]] : []),
+    [t("conditionLabel"), conditionBadge(p)],
+  ]
+    .map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`)
     .join("");
   return `<main id="main" class="product-page content-wrap" tabindex="-1">${breadcrumbs([
     `<a href="#home">${t("home")}</a>`,
     `<a href="#catalog">${t("catalog")}</a>`,
     `<a href="#catalog?category=${p.type}">${t(p.type)}</a>`,
     `<span aria-current="page">${escape(p.name)}</span>`,
-  ])}<div class="product-layout"><section class="product-gallery" aria-label="${escape(p.name)}"><div class="gallery-main"><img src="assets/products/${images[index]}" alt="${escape(p.name)} — ${escape(t(p.color))}" width="900" height="900" fetchpriority="high"/><span class="product-tag">${t(p.tag === "sale" ? "saleTag" : p.tag)}</span>${favoriteButton(p.id)}</div>${thumbs}</section><div class="product-info"><p class="eyebrow">${escape(p.brand)}</p><h1>${escape(p.name)}</h1><p class="detail-kind">${t(p.type)} · ${t(p.color)} · ${t("articleLabel")} ${escape(p.article)}</p><div class="detail-price">${money(p.price)} ${p.oldPrice ? `<del>${money(p.oldPrice)}</del>` : ""}</div><p class="product-lead">${escape(description)}</p><div class="size-heading"><strong>${t("size")}</strong>${chart ? `<button type="button" class="subtle-button" data-action="size-chart">${t("sizeChart")}</button>` : ""}</div><div class="sizes" role="group" aria-label="${t("size")}">${sizes}</div>${fit}<button class="button dark add-to-cart" data-action="add-cart" ${!state.size ? "disabled" : ""}>${t(state.size ? "addCart" : "chooseSize")} ${icon("bag")}</button><button type="button" class="button outline olx-buy" data-action="olx" data-id="${p.id}">${t("buyOlx")} ${icon("arrow")}</button><p class="product-note olx-note">${t("buyOlxNote")}</p><ul class="product-perks"><li>${icon("truck")}${t("perkDelivery")}</li><li>${icon("card")}${t("perkPayment")}</li><li>${icon("shield")}${t("perkOlx")}</li></ul><button type="button" class="subtle-button share-button" data-action="share" data-id="${p.id}">${icon("share")}${t("share")}</button><p class="product-note">${t("productNote")}</p></div></div><section class="product-specs" aria-labelledby="specs-title"><h2 id="specs-title">${t("specsTitle")}</h2><dl>${specs}</dl></section><section class="related-products" aria-labelledby="related-title"><h2 id="related-title">${t("relatedTitle")}</h2><div class="product-grid">${relatedProducts(p).map(productCard).join("")}</div></section></main>`;
-}
-function openSizeChart() {
-  const p = productById(state.product);
-  const chart = sizeChart(p);
-  if (!chart) return;
-  const head =
-    chart.kind === "shoes"
-      ? [t("sizeLabel"), t("sizeChartInsole")]
-      : [t("sizeLabel"), t("sizeChartChest"), t("sizeChartWaist")];
-  const rows = chart.rows
-    .map((row) =>
-      chart.kind === "shoes"
-        ? `<tr><th scope="row">${row.size}</th><td>${new Intl.NumberFormat(state.language === "en" ? "en-GB" : "uk-UA").format(row.cm)}</td></tr>`
-        : `<tr><th scope="row">${row.size}</th><td>${row.chest}</td><td>${row.waist}</td></tr>`,
-    )
-    .join("");
-  const finder =
-    chart.kind === "shoes"
-      ? `<form id="foot-form" class="foot-form" novalidate><label class="form-field">${t("footLength")}<input name="foot" inputmode="decimal" maxlength="5" placeholder="25,5" required /></label><button class="button dark" type="submit">${t("footFind")}</button><p class="foot-result" role="status"></p></form><p class="size-howto">${t("sizeHowTo")}</p>`
-      : "";
-  const dialog = $("#info-dialog");
-  dialog.setAttribute("aria-label", t("sizeChart"));
-  dialog.innerHTML = `<div class="dialog-header"><h2>${t("sizeChart")}</h2>${iconButton("close", "close", t("close"))}</div><div class="size-chart"><p class="detail-kind">${escape(p.name)}${p.fit ? ` · ${t(`fit${capital(p.fit)}`)}` : ""}</p><table><thead><tr>${head.map((label) => `<th scope="col">${label}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table>${finder}<p class="product-note">${t("sizeGuideCopy")}</p></div>`;
-  showDialog(dialog);
-  dialog.querySelector("input, .icon-button")?.focus();
+  ])}<div class="product-layout"><section class="product-gallery" aria-label="${escape(p.name)}"><div class="gallery-main"><img src="${imageUrl(images[index])}" alt="${escape(p.name)} — ${escape(t(p.color))}" width="900" height="900" fetchpriority="high"/>${conditionBadge(p, "product-tag")}${favoriteButton(p.id)}</div>${thumbs}</section><div class="product-info"><p class="eyebrow">${escape(p.brand)}</p><h1>${escape(p.name)}</h1><p class="detail-kind">${t(p.type)} · ${t(p.color)} · ${t("articleLabel")} ${escape(p.article)}</p><div class="detail-price">${money(p.price)} ${p.oldPrice ? `<del>${money(p.oldPrice)}</del>` : ""}</div><p class="product-lead">${escape(description)}</p><dl class="item-facts">${facts}</dl>${p.insoleCm ? `<p class="size-howto">${t("insoleHint")}</p>` : ""}${available ? `<p class="unique-note">${t("uniqueNote")}</p>${added ? `<button class="button dark add-to-cart" data-action="cart">${t("inCart")} · ${t("goToCart")} ${icon("bag")}</button>` : `<button class="button dark add-to-cart" data-action="add-cart" data-id="${p.id}">${t("addCart")} ${icon("bag")}</button>`}<button type="button" class="button outline olx-buy" data-action="olx" data-id="${p.id}">${t("buyOlx")} ${icon("arrow")}</button><p class="product-note olx-note">${t("buyOlxNote")}</p>` : `<p class="sold-note" role="status">${t(p.status === "sold" ? "soldNote" : "hiddenNote")}</p><a href="#catalog?category=${p.type}" class="button dark add-to-cart">${t("backCatalog")} ${icon("arrow")}</a>`}<ul class="product-perks"><li>${icon("truck")}${t("perkDelivery")}</li><li>${icon("card")}${t("perkPayment")}</li><li>${icon("shield")}${t("perkOlx")}</li></ul><button type="button" class="subtle-button share-button" data-action="share" data-id="${p.id}">${icon("share")}${t("share")}</button><p class="product-note">${t("productNote")}</p></div></div><section class="product-specs" aria-labelledby="specs-title"><h2 id="specs-title">${t("specsTitle")}</h2><dl>${specs}</dl></section><section class="related-products" aria-labelledby="related-title"><h2 id="related-title">${t("relatedTitle")}</h2><div class="product-grid">${relatedProducts(p).map(productCard).join("")}</div></section></main>`;
 }
 async function shareProduct(id) {
   const p = productById(id);
   if (!p) return;
   // Share pages in /p/ carry the link preview (photo, name, price) for messengers.
-  const url = new URL(`p/${id}.html`, location.href.split("#")[0]).href;
+  const base = location.href.split("#")[0];
+  const url = shippedIds.has(id) && !/^data:/.test(p.image)
+    ? new URL(`p/${id}.html`, base).href
+    : `${base}#product/${id}`;
   try {
     if (navigator.share) {
       await navigator.share({ title: `${p.name} — BuyDUCK`, url });
@@ -437,7 +437,7 @@ function olxCheckout() {
   const rows = state.cart
     .map((item) => {
       const p = productById(item.id);
-      return `<li class="olx-item"><img src="${photo(p)}" alt="" width="56" height="56" loading="lazy"/><span><strong>${escape(p.name)}</strong><small>${t("sizeLabel")}: ${escape(item.size)} · ${item.quantity} ${t("qtyShort")}</small></span><button type="button" class="button outline" data-action="olx" data-id="${p.id}">${t("buyOnOlx")} ${icon("arrow")}</button></li>`;
+      return `<li class="olx-item"><img src="${photo(p)}" alt="" width="56" height="56" loading="lazy"/><span><strong>${escape(p.name)}</strong><small>${t("sizeLabel")}: ${escape(sizeText(p))} · ${t(p.condition === "newTag" ? "condNewTag" : "condUsed")}</small></span><button type="button" class="button outline" data-action="olx" data-id="${p.id}">${t("buyOnOlx")} ${icon("arrow")}</button></li>`;
     })
     .join("");
   return `<div class="olx-checkout"><p>${t("olxListCopy")}</p><ul class="olx-list">${rows}</ul><p class="product-note">${t("buyOlxNote")}</p></div>`;
@@ -487,7 +487,7 @@ function renderCart() {
     content = `<div class="cart-items">${state.cart
       .map((item, index) => {
         const p = productById(item.id);
-        return `<article class="cart-item"><img src="${photo(p)}" alt="${p.name}" width="110" height="110"/><div class="cart-item-info"><h3>${p.name}</h3><p>${t("sizeLabel")}: ${item.size}</p><strong>${money(p.price)}</strong><div class="quantity"><button data-action="quantity" data-index="${index}" data-delta="-1" aria-label="${t("decrease")}: ${p.name}">${icon("minus")}</button><span>${item.quantity}</span><button data-action="quantity" data-index="${index}" data-delta="1" ${item.quantity >= 99 ? "disabled" : ""} aria-label="${t("increase")}: ${p.name}">${icon("plus")}</button></div></div><button class="remove-item" data-action="remove" data-index="${index}" aria-label="${t("remove")}: ${p.name}">${icon("close")}</button></article>`;
+        return `<article class="cart-item"><img src="${photo(p)}" alt="${p.name}" width="110" height="110"/><div class="cart-item-info"><h3>${p.name}</h3><p>${t("sizeLabel")}: ${escape(sizeText(p))}${p.insoleCm ? ` · ${t("insoleLength")} ${insoleText(p)}` : ""}</p>${conditionBadge(p)}<strong>${money(p.price)}</strong></div><button class="remove-item" data-action="remove" data-index="${index}" aria-label="${t("remove")}: ${p.name}">${icon("close")}</button></article>`;
       })
       .join(
         "",
@@ -598,18 +598,6 @@ document.addEventListener("click", (event) => {
   if (action === "reset") {
     location.hash = route().page === "favorites" ? "favorites" : "catalog";
   }
-  if (action === "size") {
-    state.size = button.dataset.value;
-    renderKeepingScroll();
-    $(`.size-button[data-value="${state.size}"]`)?.focus();
-  }
-  if (action === "size-chart") openSizeChart();
-  if (action === "pick-size") {
-    state.size = button.dataset.value;
-    closeDialog($("#info-dialog"));
-    renderKeepingScroll();
-    $(`.size-button[data-value="${state.size}"]`)?.focus();
-  }
   if (action === "photo") {
     state.photo = Number(button.dataset.index) || 0;
     renderKeepingScroll();
@@ -617,32 +605,14 @@ document.addEventListener("click", (event) => {
   }
   if (action === "share") shareProduct(button.dataset.id);
   if (action === "add-cart") {
-    if (!state.size) return;
-    state.cart = addToCart(state.cart, state.product, state.size);
+    const id = button.dataset.id || state.product;
+    if (inCart(state.cart, id)) return toast(t("inCart"));
+    state.cart = addToCart(state.cart, id);
     save("cart");
-    track("add_to_cart", { id: state.product, size: state.size });
-    render();
+    track("add_to_cart", { id, size: productById(id)?.size });
+    renderKeepingScroll();
     toast(t("added"));
-    button.innerHTML = `${t("added")} ${icon("check")}`;
-  }
-  if (action === "quantity") {
-    const index = Number(button.dataset.index);
-    const item = state.cart[index];
-    if (!item) return;
-    item.quantity += Number(button.dataset.delta);
-    if (item.quantity <= 0) state.cart.splice(index, 1);
-    save("cart");
-    render();
-    renderCart();
-    const controls = [
-      ...$("#cart-dialog").querySelectorAll(
-        `[data-action="quantity"][data-delta="${button.dataset.delta}"]`,
-      ),
-    ];
-    (
-      controls[Math.min(index, controls.length - 1)] ||
-      $('#cart-dialog [data-action="close"]')
-    ).focus();
+    $(`.product-page [data-action="cart"]`)?.focus();
   }
   if (action === "remove") {
     state.cart.splice(Number(button.dataset.index), 1);
@@ -707,16 +677,6 @@ document.addEventListener("input", (event) => {
     );
 });
 document.addEventListener("submit", (event) => {
-  if (event.target.id === "foot-form") {
-    event.preventDefault();
-    const field = event.target.elements.foot;
-    const foot = Number(String(field.value).replace(",", "."));
-    const size = suggestShoeSize(productById(state.product), foot);
-    event.target.querySelector(".foot-result").innerHTML = size
-      ? `${escape(t("footSuggest").replace("{size}", size))} <button type="button" class="text-button" data-action="pick-size" data-value="${escape(size)}">${escape(t("chooseSuggested").replace("{size}", size))}</button>`
-      : escape(t("footNoSize"));
-    return;
-  }
   if (event.target.matches(".search-form")) {
     event.preventDefault();
     const query = new FormData(event.target).get("search").toString().trim();
@@ -760,6 +720,7 @@ document.addEventListener("submit", (event) => {
       });
     state.account = accounts.current();
     state.lastOrder = order;
+    for (const item of order.items) catalogStore.setStatus(item.id, "sold");
     state.cart = [];
     save("cart");
     state.checkoutDraft = {};
@@ -872,6 +833,11 @@ for (const dialog of document.querySelectorAll("dialog")) {
   });
 }
 window.addEventListener("storage", (event) => {
+  if (event.key === "buyduck:catalog") {
+    catalogStore.load();
+    state.cart = sanitizeCart(state.cart);
+    render();
+  }
   if (event.key === "buyduck:session" || event.key === "buyduck:accounts") {
     const before = state.account?.id;
     state.account = accounts.current();

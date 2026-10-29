@@ -1,4 +1,4 @@
-import { products, productById } from "./data.js";
+import { isAvailable, products, productById } from "./data.js";
 
 export function filterProducts({
   category = "all",
@@ -14,14 +14,16 @@ export function filterProducts({
     clothing: "одяг одежда clothing shirt hoodie рубашка сорочка худі худи",
     accessories: "аксесуари аксессуары accessories backpack рюкзак",
   };
+  // Hidden and sold items leave the catalog; favorites still show sold ones.
   const result = products.filter(
     (p) =>
+      (favorites ? p.status !== "hidden" : isAvailable(p)) &&
       (category === "all" || p.type === category) &&
       (gender === "all" || p.gender === gender || p.gender === "unisex") &&
       (!favorites || favorites.includes(p.id)) &&
       (!sale || p.oldPrice) &&
       (!needle ||
-        `${p.name} ${p.brand} ${p.type} ${p.color} ${keywords[p.type]}`
+        `${p.name} ${p.brand} ${p.type} ${p.color} ${p.size} ${keywords[p.type]}`
           .toLocaleLowerCase()
           .includes(needle)),
   );
@@ -29,6 +31,8 @@ export function filterProducts({
   if (sort === "price-desc") result.sort((a, b) => b.price - a.price);
   return result;
 }
+// Each product is one physical item, so a cart line is always quantity 1.
+// `quantity` stays in the line shape for orders and statistics.
 export function sanitizeCart(value) {
   if (!Array.isArray(value)) return [];
   const result = [];
@@ -37,22 +41,12 @@ export function sanitizeCart(value) {
     const product = productById(item.id);
     if (
       !product ||
-      !product.sizes.includes(item.size) ||
-      !Number.isInteger(item.quantity) ||
-      item.quantity < 1
+      !isAvailable(product) ||
+      item.size !== product.size ||
+      result.some((row) => row.id === item.id)
     )
       continue;
-    const duplicate = result.find(
-      (row) => row.id === item.id && row.size === item.size,
-    );
-    if (duplicate)
-      duplicate.quantity = Math.min(99, duplicate.quantity + item.quantity);
-    else
-      result.push({
-        id: item.id,
-        size: item.size,
-        quantity: Math.min(99, item.quantity),
-      });
+    result.push({ id: item.id, size: product.size, quantity: 1 });
   }
   return result;
 }
@@ -63,59 +57,27 @@ export const cartTotal = (cart) =>
   );
 export const cartCount = (cart) =>
   cart.reduce((total, item) => total + item.quantity, 0);
-export function addToCart(cart, id, size) {
+export const inCart = (cart, id) => cart.some((item) => item.id === id);
+export function addToCart(cart, id) {
   const product = productById(id);
-  if (!product || !product.sizes.includes(size)) return cart;
-  const next = cart.map((row) => ({ ...row }));
-  const row = next.find((item) => item.id === id && item.size === size);
-  if (row) row.quantity = Math.min(99, row.quantity + 1);
-  else next.push({ id, size, quantity: 1 });
-  return next;
-}
-
-// Typical insole length (cm) per EU shoe size. Demo values until each model is measured.
-const insoleCm = {
-  35: 22.5, 36: 23, 37: 23.5, 38: 24.5, 39: 25, 40: 25.5,
-  41: 26.5, 42: 27, 43: 27.5, 44: 28.5, 45: 29, 46: 29.5,
-};
-// Body measurements (cm) per clothing size.
-const clothingCm = {
-  XS: { chest: "82–86", waist: "66–70" },
-  S: { chest: "86–92", waist: "70–76" },
-  M: { chest: "92–98", waist: "76–82" },
-  L: { chest: "98–104", waist: "82–88" },
-  XL: { chest: "104–110", waist: "88–94" },
-};
-export function sizeChart(product) {
-  if (!product) return null;
-  if (product.type === "sneakers")
-    return {
-      kind: "shoes",
-      rows: product.sizes
-        .filter((size) => insoleCm[size])
-        .map((size) => ({ size, cm: insoleCm[size] })),
-    };
-  if (product.type === "clothing")
-    return {
-      kind: "clothing",
-      rows: product.sizes
-        .filter((size) => clothingCm[size])
-        .map((size) => ({ size, ...clothingCm[size] })),
-    };
-  return null;
-}
-// Shoe size whose insole fits a foot of `footCm` with ~0.5 cm to spare.
-export function suggestShoeSize(product, footCm) {
-  const chart = sizeChart(product);
-  if (chart?.kind !== "shoes" || !(footCm > 0)) return null;
-  return chart.rows.find((row) => row.cm >= footCm + 0.5)?.size ?? null;
+  if (!product || !isAvailable(product) || inCart(cart, id)) return cart;
+  return [...cart.map((row) => ({ ...row })), { id, size: product.size, quantity: 1 }];
 }
 // Up to `limit` other products of the same type, then anything else.
 export function relatedProducts(product, limit = 4) {
   if (!product) return [];
-  const others = products.filter((p) => p.id !== product.id);
+  const others = products.filter((p) => p.id !== product.id && isAvailable(p));
   return [
     ...others.filter((p) => p.type === product.type),
     ...others.filter((p) => p.type !== product.type),
   ].slice(0, limit);
 }
+// Newest owner items first; shipped demo items (no date) keep their order after them.
+export const newestProducts = (limit = 4) =>
+  products
+    .map((product, index) => ({ product, index }))
+    .filter(({ product }) => isAvailable(product))
+    .sort((a, b) => (b.product.createdAt ?? 0) - (a.product.createdAt ?? 0) || a.index - b.index)
+    .slice(0, limit)
+    .map(({ product }) => product);
+

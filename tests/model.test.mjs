@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
-import { products } from "../src/data.js";
+import { conditions, products } from "../src/data.js";
 import { dictionaries } from "../src/i18n.js";
 import {
   filterProducts,
@@ -9,48 +9,47 @@ import {
   cartTotal,
   cartCount,
   addToCart,
+  inCart,
 } from "../src/model.js";
 
-test("adding the same product and size merges quantity without mutating the input", () => {
-  const original = [{ id: "court", size: "40", quantity: 1 }];
-  assert.deepEqual(addToCart(original, "court", "40"), [
-    { id: "court", size: "40", quantity: 2 },
-  ]);
-  assert.equal(original[0].quantity, 1);
+test("an item is added once with its own size, without mutating the input", () => {
+  const original = [];
+  const cart = addToCart(original, "court");
+  assert.deepEqual(cart, [{ id: "court", size: "42", quantity: 1 }]);
+  assert.deepEqual(original, []);
+  assert.ok(inCart(cart, "court"));
+  // Each product is a single pair: adding it again changes nothing.
+  assert.equal(addToCart(cart, "court"), cart);
 });
-test("different sizes remain separate cart lines and totals use product prices", () => {
-  const cart = addToCart(addToCart([], "court", "40"), "court", "41");
+test("different items are separate lines and totals use product prices", () => {
+  const cart = addToCart(addToCart([], "court"), "retro");
   assert.equal(cart.length, 2);
   assert.equal(cartCount(cart), 2);
-  assert.equal(cartTotal(cart), 6580);
+  assert.equal(cartTotal(cart), 3290 + 4190);
 });
-test("unknown products and unsupported sizes cannot be added", () => {
-  assert.deepEqual(addToCart([], "not-a-product", "40"), []);
-  assert.deepEqual(addToCart([], "court", "XS"), []);
+test("unknown products cannot be added", () => {
+  assert.deepEqual(addToCart([], "not-a-product"), []);
 });
-test("saved cart rejects malformed, missing and invalid entries", () => {
+test("saved cart keeps one line per item and drops entries with a wrong size", () => {
   assert.deepEqual(sanitizeCart({}), []);
   assert.deepEqual(
     sanitizeCart([
       null,
       false,
-      { id: "court", size: "40", quantity: -1 },
       { id: "missing", size: "40", quantity: 1 },
-      { id: "court", size: "bad", quantity: 1 },
-      { id: "court", size: "40", quantity: 1.5 },
-      { id: "court", size: "40", quantity: 2 },
+      { id: "court", size: "40", quantity: 1 },
+      { id: "court", size: "42", quantity: 3 },
+      { id: "court", size: "42", quantity: 1 },
+      { id: "hoodie", size: "L" },
     ]),
-    [{ id: "court", size: "40", quantity: 2 }],
+    [
+      { id: "court", size: "42", quantity: 1 },
+      { id: "hoodie", size: "L", quantity: 1 },
+    ],
   );
 });
-test("restoring duplicate cart entries merges them and caps quantity", () => {
-  assert.deepEqual(
-    sanitizeCart([
-      { id: "court", size: "40", quantity: 80 },
-      { id: "court", size: "40", quantity: 80 },
-    ]),
-    [{ id: "court", size: "40", quantity: 99 }],
-  );
+test("search also finds items by size", () => {
+  assert.deepEqual(filterProducts({ query: "43" }).map((p) => p.id), ["retro"]);
 });
 test("sale filter contains only discounted products", () => {
   const result = filterProducts({ sale: true });
@@ -105,12 +104,17 @@ test("three translations have matching keys and nonempty values", () => {
     );
   }
 });
-test("each catalog image exists locally and each product has valid sizes and price", () => {
+test("each catalog image exists locally and each item has one size, a condition and a price", () => {
   for (const p of products) {
     assert.ok(
       existsSync(new URL(`../assets/products/${p.image}`, import.meta.url)),
     );
     assert.ok(Number.isInteger(p.price) && p.price > 0);
-    assert.ok(p.sizes.length > 0);
+    assert.ok(typeof p.size === "string" && p.size.length > 0, p.id);
+    assert.ok(conditions.includes(p.condition), p.id);
+    if (p.type === "sneakers") {
+      assert.match(p.size, /^\d{2}(\.5)?$/, `${p.id} EU size`);
+      assert.ok(p.insoleCm >= 20 && p.insoleCm <= 33, `${p.id} insole cm`);
+    } else assert.equal(p.insoleCm, undefined, `${p.id} has no insole`);
   }
 });

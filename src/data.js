@@ -1,3 +1,6 @@
+// Every product is a single item (mostly pre-owned): one size, its own insole
+// length for shoes, and a condition label.
+export const conditions = ["used", "newTag"];
 export const products = [
   {
     id: "court",
@@ -10,10 +13,10 @@ export const products = [
     oldPrice: 3890,
     image: "white-sneakers.jpg",
     color: "white",
-    sizes: ["36", "37", "38", "39", "40", "41", "42", "43", "44", "45"],
-    tag: "bestseller",
+    size: "42",
+    insoleCm: 27.5,
+    condition: "newTag",
     article: "BD-CE-01",
-    fit: "true",
     details: {
       upper: "matLeather",
       lining: "matTextile",
@@ -37,10 +40,10 @@ export const products = [
     price: 4190,
     image: "retro-sneakers.jpg",
     color: "sand",
-    sizes: ["40", "41", "42", "43", "44", "45"],
-    tag: "new",
+    size: "43",
+    insoleCm: 28,
+    condition: "used",
     article: "BD-RR-02",
-    fit: "small",
     details: {
       upper: "matSuedeMesh",
       lining: "matTextile",
@@ -64,10 +67,10 @@ export const products = [
     price: 2890,
     image: "daily-sneakers.jpg",
     color: "cream",
-    sizes: ["36", "37", "38", "39", "40", "41"],
-    tag: "new",
+    size: "38",
+    insoleCm: 24.5,
+    condition: "used",
     article: "BD-DL-03",
-    fit: "true",
     details: {
       upper: "matLeather",
       lining: "matLeather",
@@ -92,10 +95,10 @@ export const products = [
     oldPrice: 4490,
     image: "red-sneakers.jpg",
     color: "red",
-    sizes: ["37", "38", "39", "40", "41", "42", "43", "44"],
-    tag: "sale",
+    size: "41",
+    insoleCm: 26.5,
+    condition: "newTag",
     article: "BD-AM-04",
-    fit: "large",
     details: {
       upper: "matMesh",
       lining: "matTextile",
@@ -119,10 +122,10 @@ export const products = [
     price: 3890,
     image: "urban-sneakers.jpg",
     color: "cream",
-    sizes: ["36", "37", "38", "39", "40", "41", "42", "43", "44"],
-    tag: "new",
+    size: "40",
+    insoleCm: 26,
+    condition: "used",
     article: "BD-UL-05",
-    fit: "true",
     details: {
       upper: "matLeatherSuede",
       lining: "matTextile",
@@ -146,10 +149,9 @@ export const products = [
     price: 2190,
     image: "shirt.jpg",
     color: "white",
-    sizes: ["XS", "S", "M", "L", "XL"],
-    tag: "new",
+    size: "M",
+    condition: "used",
     article: "BD-ES-06",
-    fit: "true",
     details: {
       fabric: "matCotton",
       season: "seasonAll",
@@ -171,10 +173,9 @@ export const products = [
     price: 2490,
     image: "hoodie.jpg",
     color: "stone",
-    sizes: ["XS", "S", "M", "L", "XL"],
-    tag: "bestseller",
+    size: "L",
+    condition: "newTag",
     article: "BD-WH-07",
-    fit: "large",
     details: {
       fabric: "matCottonFleece",
       season: "seasonDemi",
@@ -196,10 +197,9 @@ export const products = [
     price: 1790,
     image: "backpack.jpg",
     color: "stone",
-    sizes: ["ONE SIZE"],
-    tag: "new",
+    size: "ONE SIZE",
+    condition: "used",
     article: "BD-CB-08",
-    fit: null,
     details: {
       fabric: "matPolyester",
       volume: "20",
@@ -212,6 +212,11 @@ export const products = [
     },
   },
 ];
+// Owner-managed items can be hidden or sold (see src/catalog.js); demo items have no status.
+export const isAvailable = (product) => (product?.status ?? "active") === "active";
+// Shipped photos are file names in assets/products/; owner uploads are data URLs.
+export const imageUrl = (image) =>
+  /^(data:|https?:)/.test(image) ? image : `assets/products/${image}`;
 // Every product has at least its main photo; extra photos go to `images` once they exist.
 export const productImages = (product) =>
   product.images?.length ? product.images : [product.image];

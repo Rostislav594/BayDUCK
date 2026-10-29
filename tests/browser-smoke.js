@@ -15,10 +15,11 @@ async (page) => {
   await page.locator('.product-grid a.product-open[href="#product/court"]').first().click();
   await page.waitForFunction(() => location.hash === '#product/court');
   check(await page.locator('.product-page h1').textContent() === 'Court Essential', 'Product page opens at its own link');
-  check(await page.locator('[data-action="add-cart"]').isDisabled(), 'Size required before adding');
-  await page.locator('.size-button[data-value="40"]').click();
-  await page.locator('[data-action="add-cart"]').click();
-  check(await page.locator('.header .cart-count').textContent() === '1', 'Adding selected size updates cart');
+  const facts = await page.locator('.product-page .item-facts').textContent();
+  check(facts.includes('42 EU') && facts.includes('27,5') && facts.includes('Нові з біркою'), 'Item shows its one size, insole and condition');
+  await page.locator('.product-page [data-action="add-cart"]').click();
+  check(await page.locator('.header .cart-count').textContent() === '1', 'Adding the item updates cart');
+  check(await page.locator('.product-page [data-action="add-cart"]').count() === 0 && await page.locator('.product-page [data-action="cart"]').count() === 1, 'A single item cannot be added twice');
   await page.goBack();
   await page.locator('.product-grid').waitFor();
   check(await page.evaluate(() => !location.hash.startsWith('#product')), 'Back returns from the product page');
@@ -33,8 +34,7 @@ async (page) => {
   check(await page.locator('.header .cart-count').textContent() === '1', 'Cart survives reload');
   check(await page.locator('.product-grid [data-action="favorite"][data-id="court"]').getAttribute('aria-pressed') === 'true', 'Wishlist survives reload');
   await page.locator('.cart-trigger').click();
-  await page.locator('[data-action="quantity"][data-delta="1"]').click();
-  check((await page.locator('.cart-total strong').textContent()).replace(/\D/g, '') === '6580', 'Quantity updates monetary total');
+  check(await page.locator('[data-action="quantity"]').count() === 0 && (await page.locator('.cart-total strong').textContent()).replace(/\D/g, '') === '3290', 'Cart has no quantity controls and totals the item price');
   await page.locator('[data-action="checkout"]').click();
   await page.locator('#checkout-form button[type="submit"]').click();
   check(await page.locator('#checkout-form').count() === 1, 'Required checkout fields block empty submission');
@@ -49,6 +49,17 @@ async (page) => {
   // Guests get no profile: delivery details live only inside the order the seller ships.
   check(await page.evaluate(() => Object.entries(localStorage).every(([k, v]) => k === 'buyduck:orders' || !v.includes('+380501234567'))), 'Guest details stored only in the order');
   await page.keyboard.press('Escape');
+  // Each item is one of a kind: the ordered pair is sold and leaves the catalog.
+  await page.goto('http://127.0.0.1:5173/#catalog');
+  await count(7);
+  check(await page.locator('.product-grid a[href="#product/court"]').count() === 0, 'Ordered item leaves the catalog');
+  await page.goto('http://127.0.0.1:5173/#product/court');
+  check(await page.locator('.product-page .sold-note').count() === 1 && await page.locator('.product-page [data-action="add-cart"]').count() === 0, 'Sold item page says it is sold');
+  // Put the demo catalog back (as the owner's "Back on sale" would) for the remaining checks.
+  await page.evaluate(() => localStorage.removeItem('buyduck:catalog'));
+  await page.goto('http://127.0.0.1:5173/#catalog');
+  await page.reload();
+  await count(8);
   await page.locator('.search-form input').fill('Court');
   await page.locator('.search-form button').click();
   await count(1);
@@ -75,8 +86,7 @@ async (page) => {
   check(await page.locator('main .empty-state').count() === 1, 'Search safely escaped; no-result state');
   // The cart was emptied by the order; add an item again to test removal.
   await page.goto('http://127.0.0.1:5173/#product/court');
-  await page.locator('.size-button[data-value="40"]').click();
-  await page.locator('[data-action="add-cart"]').click();
+  await page.locator('.product-page [data-action="add-cart"]').click();
   await page.locator('.cart-trigger').click();
   await page.locator('[data-action="remove"]').click();
   check(await page.locator('#cart-dialog .empty-state').count() === 1, 'Removing last item shows empty bag');

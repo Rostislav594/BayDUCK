@@ -24,7 +24,20 @@ export function sharePage(product, base = siteUrl) {
   const target = `../index.html#product/${product.id}`;
   // "демо" stays while the catalog is a prototype, so previews never look like real offers.
   const title = `${product.name} — ${price(product.price)} | BuyDUCK (демо)`;
-  const description = `${uk[product.type]} · ${uk[product.color]}. ${product.description?.uk || ""}`.trim();
+  const size =
+    product.size === "ONE SIZE"
+      ? uk.oneSize
+      : product.type === "sneakers"
+        ? `${product.size.replace(".", ",")} EU`
+        : product.size;
+  const facts = [
+    `${uk.sizeLabel} ${size}`,
+    ...(product.insoleCm
+      ? [`${uk.insoleLength.toLowerCase()} ${String(product.insoleCm).replace(".", ",")} ${uk.cmShort}`]
+      : []),
+    uk[product.condition === "newTag" ? "condNewTag" : "condUsed"],
+  ].join(" · ");
+  const description = `${facts}. ${product.description?.uk || ""}`.trim();
   const image = `${base}/assets/products/${product.image}`;
   return `<!doctype html>
 <html lang="uk">

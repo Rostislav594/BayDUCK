@@ -32,12 +32,13 @@ async (browserPage) => {
     check(!await auth.evaluate(d => d.open) && await page.evaluate(() => document.activeElement?.classList.contains("header-account")), "Escape closes the dialog and returns focus");
 
     // Guest quick checkout keeps working and saves nothing personal.
-    const addCourt = async () => {
-      await page.locator('.product-grid a.product-open[href="#product/court"]').first().click();
-      await page.locator('.size-button[data-value="40"]').click();
-      await page.locator('[data-action="add-cart"]').click();
+    // Each item is one of a kind and sells with the order, so every order uses a different pair.
+    const addItem = async (id) => {
+      await page.locator(`.product-grid a.product-open[href="#product/${id}"]`).first().click();
+      await page.locator('.product-page [data-action="add-cart"]').click();
       await page.goBack();
     };
+    const addCourt = () => addItem("court");
     await addCourt();
     await page.locator(".cart-trigger").click();
     await page.locator('[data-action="checkout"]').click();
@@ -55,8 +56,8 @@ async (browserPage) => {
     await page.keyboard.press("Escape");
 
     // Sign up from the checkout, with validation, then continue to a prefilled form.
-    // The guest order emptied the cart, so add the item again first.
-    await addCourt();
+    // The guest order emptied the cart and sold Court Essential, so add another pair.
+    await addItem("retro");
     await page.locator(".cart-trigger").click();
     await page.locator('[data-action="checkout"]').click();
     await page.locator('.quick-buy [data-action="auth"]').click();
@@ -91,7 +92,7 @@ async (browserPage) => {
     // Account page: order history and saved delivery details.
     await page.locator('.success-state a[href="#account"]').click();
     await page.locator(".account-page .order-card").waitFor();
-    check((await page.locator(".order-card h3").first().textContent()).includes(number) && (await page.locator(".order-card").first().textContent()).includes("Court Essential"), "Order appears in the account history");
+    check((await page.locator(".order-card h3").first().textContent()).includes(number) && (await page.locator(".order-card").first().textContent()).includes("Retro Runner 02"), "Order appears in the account history");
     check(await page.locator('#profile-form [name="phone"]').inputValue() === "+380671112233" && await page.locator('#profile-form [name="city"]').inputValue() === "Lviv", "Delivery details were saved to the profile");
     check(await page.locator(".header-account.is-signed-in").count() === 1, "Header shows the signed-in state");
     await page.locator('#profile-form [name="name"]').fill("Olena K");
